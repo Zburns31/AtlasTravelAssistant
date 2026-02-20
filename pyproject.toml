@@ -1,0 +1,38 @@
+[project]
+name = "atlas"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [{ name = "zburns31", email = "zacbburns@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = [
+    # LLM orchestration — OpenRouter provides a single OpenAI-compatible endpoint
+    # for 300+ models (OpenAI, Anthropic, Google, Meta, etc.)
+    # Switch models by changing ATLAS_LLM_MODEL; no extra provider packages needed.
+    "langchain>=0.3",
+    "langchain-openai>=0.2", # ChatOpenAI pointed at OpenRouter base_url
+    # Structured data
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    # Frontend
+    "dash>=2.17",
+    "dash-bootstrap-components>=1.6",
+    "plotly>=5.22",
+    # Utilities
+    "python-dotenv>=1.0",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-mock>=3.14", "pytest-asyncio>=0.23", "ruff>=0.4"]
+
+[project.scripts]
+atlas = "atlas:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/atlas"]
