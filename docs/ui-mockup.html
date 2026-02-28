@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Atlas Travel Assistant — UI Mockup v2</title>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        :root {
+            --bg: #1a1d23;
+            --bg2: #22262e;
+            --bg3: #2a2f38;
+            --bg4: #333842;
+            --border: #3a3f4a;
+            --text: #e8eaed;
+            --muted: #8b929e;
+            --dim: #5d6370;
+            --accent: #4a9eff;
+            --accent2: #3a80d6;
+            --green: #34d399;
+            --green-bg: rgba(52, 211, 153, .1);
+            --orange: #f59e0b;
+            --orange-bg: rgba(245, 158, 11, .1);
+            --blue: #60a5fa;
+            --blue-bg: rgba(96, 165, 250, .1);
+            --purple: #a78bfa;
+            --purple-bg: rgba(167, 139, 250, .1);
+            --red: #f87171;
+            --red-bg: rgba(248, 113, 113, .1);
+            --pink: #f472b6;
+            --pink-bg: rgba(244, 114, 182, .1);
+            --teal: #2dd4bf;
+            --teal-bg: rgba(45, 212, 191, .1);
+            --r: 6px;
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 13px
+        }
+
+        /* ── Navbar ── */
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+            height: 48px
+        }
+
+        .nav-brand {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .nav-brand svg {
+            width: 20px;
+            height: 20px
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .badge-sm {
+            background: var(--bg4);
+            color: var(--muted);
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 12px
+        }
+
+        .btn-sm {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 4px 12px;
+            border-radius: var(--r);
+            cursor: pointer;
+            font-size: 12px
+        }
+
+        .btn-sm:hover {
+            background: var(--bg3)
+        }
+
+        /* ── Layout ── */
+        .app {
+            display: grid;
+            grid-template-columns: 340px 1fr 320px;
+            height: calc(100vh - 48px);
+            overflow: hidden
+        }
+
+        /* ── Chat panel ── */
+        .chat {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            background: var(--bg2)
+        }
+
+        .panel-hdr {
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between
+        }
+
+        .chat-msgs {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px
+        }
+
+        .msg {
+            max-width: 88%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            line-height: 1.45;
+            font-size: 12.5px
+        }
+
+        .msg.u {
+            align-self: flex-end;
+            background: var(--accent);
+            color: #fff;
+            border-bottom-right-radius: 3px
+        }
+
+        .msg.a {
+            align-self: flex-start;
+            background: var(--bg3);
+            color: var(--text);
+            border-bottom-left-radius: 3px
+        }
+
+        .msg .ts {
+            font-size: 10px;
+            color: rgba(255, 255, 255, .45);
+            margin-top: 4px
+        }
+
+        .msg.a .ts {
+            color: var(--dim)
+        }
+
+        .chat-bar {
+            padding: 10px 14px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px
+        }
+
+        .chat-in {
+            flex: 1;
+            background: var(--bg4);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 9px 14px;
+            border-radius: var(--r);
+            font-size: 12.5px;
+            outline: none
+        }
+
+        .chat-in:focus {
+            border-color: var(--accent)
+        }
+
+        .send {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 0 16px;
+            border-radius: var(--r);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px
+        }
+
+        .send:hover {
+            background: var(--accent2)
+        }
+
+        /* ── Main itinerary panel ── */
+        .main {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg);
+            overflow: hidden
+        }
+
+        .main-hdr {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between
+        }
+
+        .main-hdr h2 {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .main-hdr .acts {
+            display: flex;
+            gap: 6px
+        }
+
+        .main-hdr .acts button {
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 5px 12px;
+            border-radius: var(--r);
+            cursor: pointer;
+            font-size: 11.5px;
+            display: flex;
+            align-items: center;
+            gap: 4px
+        }
+
+        .main-hdr .acts button.primary {
+            background: var(--green);
+            border-color: var(--green);
+            color: #000;
+            font-weight: 600
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+            background: var(--bg2)
+        }
+
+        .tab {
+            padding: 10px 18px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: .15s
+        }
+
+        .tab:hover {
+            color: var(--text)
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent)
+        }
+
+        .main-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px
+        }
+
+        /* ── Trip overview cards (flights, accommodation) ── */
+        .overview-section {
+            margin-bottom: 24px
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .overview-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap
+        }
+
+        .ov-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 14px 16px;
+            flex: 1;
+            min-width: 240px
+        }
+
+        .ov-card .ov-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px
+        }
+
+        .ov-card .ov-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px
+        }
+
+        .icon-flight {
+            background: var(--blue-bg);
+            color: var(--blue)
+        }
+
+        .icon-hotel {
+            background: var(--purple-bg);
+            color: var(--purple)
+        }
+
+        .ov-card .ov-price {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--green)
+        }
+
+        .ov-card h4 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 2px
+        }
+
+        .ov-card .ov-sub {
+            font-size: 11.5px;
+            color: var(--muted);
+            line-height: 1.4
+        }
+
+        .ov-card .ov-detail {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-top: 8px;
+            font-size: 11.5px;
+            color: var(--dim)
+        }
+
+        .ov-card .ov-detail span {
+            display: flex;
+            align-items: center;
+            gap: 3px
+        }
+
+        /* ── Day section ── */
+        .day-section {
+            margin-bottom: 28px
+        }
+
+        .day-hdr {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .day-hdr .day-title {
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .day-hdr .day-title .badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600
+        }
+
+        .badge-user {
+            background: var(--blue-bg);
+            color: var(--blue)
+        }
+
+        .badge-gen {
+            background: var(--green-bg);
+            color: var(--green)
+        }
+
+        .badge-refined {
+            background: var(--orange-bg);
+            color: var(--orange)
+        }
+
+        .day-hdr .day-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 11.5px;
+            color: var(--muted)
+        }
+
+        .day-hdr .day-meta .weather {
+            display: flex;
+            align-items: center;
+            gap: 3px
+        }
+
+        .day-hdr .day-meta .cost {
+            font-weight: 600;
+            color: var(--green)
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 28px
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 9px;
+            top: 4px;
+            bottom: 4px;
+            width: 2px;
+            background: var(--border)
+        }
+
+        /* Activity item */
+        .act-item {
+            position: relative;
+            margin-bottom: 4px
+        }
+
+        .act-dot {
+            position: absolute;
+            left: -19px;
+            top: 14px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: var(--bg)
+        }
+
+        .dot-food {
+            border-color: var(--orange);
+            background: var(--orange)
+        }
+
+        .dot-culture {
+            border-color: var(--purple);
+            background: var(--purple)
+        }
+
+        .dot-sight {
+            border-color: var(--blue);
+            background: var(--blue)
+        }
+
+        .dot-adventure {
+            border-color: var(--red);
+            background: var(--red)
+        }
+
+        .dot-leisure {
+            border-color: var(--teal);
+            background: var(--teal)
+        }
+
+        .act-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 12px 14px;
+            transition: border-color .15s
+        }
+
+        .act-card:hover {
+            border-color: var(--accent)
+        }
+
+        .act-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px
+        }
+
+        .act-time {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent);
+            white-space: nowrap;
+            min-width: 70px
+        }
+
+        .act-info {
+            flex: 1
+        }
+
+        .act-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .act-title .cat {
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: 500
+        }
+
+        .cat-food {
+            background: var(--orange-bg);
+            color: var(--orange)
+        }
+
+        .cat-culture {
+            background: var(--purple-bg);
+            color: var(--purple)
+        }
+
+        .cat-sight {
+            background: var(--blue-bg);
+            color: var(--blue)
+        }
+
+        .cat-adventure {
+            background: var(--red-bg);
+            color: var(--red)
+        }
+
+        .cat-leisure {
+            background: var(--teal-bg);
+            color: var(--teal)
+        }
+
+        .act-desc {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.4;
+            margin-top: 2px
+        }
+
+        .act-foot {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-top: 6px;
+            font-size: 11px;
+            color: var(--dim)
+        }
+
+        .act-foot span {
+            display: flex;
+            align-items: center;
+            gap: 3px
+        }
+
+        .act-cost {
+            font-weight: 600;
+            color: var(--green)
+        }
+
+        /* Travel connector */
+        .travel-conn {
+            position: relative;
+            margin: 0 0 4px;
+            padding-left: 0
+        }
+
+        .travel-conn .conn-line {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 0 4px 0;
+            font-size: 11px;
+            color: var(--dim)
+        }
+
+        .travel-conn .conn-line .conn-icon {
+            font-size: 12px
+        }
+
+        .conn-dot {
+            position: absolute;
+            left: -19px;
+            top: 8px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--border);
+            margin-left: 2px
+        }
+
+        /* ── Right sidebar (map + summary) ── */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--border);
+            background: var(--bg2);
+            overflow-y: auto
+        }
+
+        .map-wrap {
+            position: relative;
+            height: 260px;
+            flex-shrink: 0;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .map-wrap svg {
+            width: 100%;
+            height: 100%;
+            opacity: .3
+        }
+
+        .map-pin {
+            position: absolute;
+            top: 35%;
+            left: 52%;
+            width: 16px;
+            height: 16px;
+            background: var(--red);
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 2px solid #fff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .4)
+        }
+
+        .map-lbl {
+            position: absolute;
+            top: calc(35% + 20px);
+            left: 52%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            font-weight: 600;
+            color: #fff;
+            background: rgba(0, 0, 0, .7);
+            padding: 2px 8px;
+            border-radius: 4px
+        }
+
+        .sidebar-section {
+            padding: 16px;
+            border-bottom: 1px solid var(--border)
+        }
+
+        .sidebar-section:last-child {
+            border-bottom: none
+        }
+
+        .sidebar-section h4 {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .sidebar-section p {
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.5
+        }
+
+        .coord {
+            font-size: 10.5px;
+            color: var(--dim);
+            margin-top: 4px
+        }
+
+        .tag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 8px
+        }
+
+        .tag {
+            background: var(--bg4);
+            color: var(--muted);
+            padding: 3px 9px;
+            border-radius: 10px;
+            font-size: 11px
+        }
+
+        /* Cost summary */
+        .cost-table {
+            width: 100%
+        }
+
+        .cost-table tr {
+            border-bottom: 1px solid var(--border)
+        }
+
+        .cost-table tr:last-child {
+            border-bottom: none;
+            font-weight: 700;
+            color: var(--text)
+        }
+
+        .cost-table td {
+            padding: 6px 0;
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .cost-table td:last-child {
+            text-align: right;
+            font-weight: 600;
+            color: var(--green)
+        }
+
+        .cost-table tr:last-child td {
+            color: var(--green);
+            font-size: 13px
+        }
+
+        /* ── Profile modal ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100
+        }
+
+        .modal-overlay.active {
+            display: flex
+        }
+
+        .modal-box {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 480px;
+            max-height: 80vh;
+            overflow-y: auto
+        }
+
+        .modal-hdr {
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between
+        }
+
+        .modal-hdr h3 {
+            font-size: 15px;
+            font-weight: 700
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 20px;
+            cursor: pointer
+        }
+
+        .modal-body {
+            padding: 20px
+        }
+
+        .fg {
+            margin-bottom: 14px
+        }
+
+        .fg label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: .5px
+        }
+
+        .fg input,
+        .fg select {
+            width: 100%;
+            background: var(--bg4);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: var(--r);
+            font-size: 12px;
+            outline: none
+        }
+
+        .fg input:focus,
+        .fg select:focus {
+            border-color: var(--accent)
+        }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px
+        }
+
+        .tag-ed {
+            background: rgba(74, 158, 255, .15);
+            color: var(--accent);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11.5px;
+            display: flex;
+            align-items: center;
+            gap: 4px
+        }
+
+        .tag-ed .rm {
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 13px
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 4px
+        }
+
+        .stat strong {
+            color: var(--text)
+        }
+
+        .modal-ft {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px
+        }
+
+        .modal-ft button {
+            padding: 6px 16px;
+            border-radius: var(--r);
+            cursor: pointer;
+            font-size: 12px;
+            border: 1px solid var(--border)
+        }
+
+        .btn-c {
+            background: var(--bg4);
+            color: var(--text)
+        }
+
+        .btn-s {
+            background: var(--green);
+            color: #000;
+            border-color: var(--green);
+            font-weight: 600
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 3px
+        }
+
+        @media(max-width:1100px) {
+            .app {
+                grid-template-columns: 1fr
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ═══════ NAVBAR ═══════ -->
+    <nav class="nav">
+        <div class="nav-brand">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <path
+                    d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z" />
+            </svg>
+            Atlas
+        </div>
+        <div class="nav-right">
+            <span class="badge-sm">openai/gpt-4o</span>
+            <button class="btn-sm" onclick="toggleModal()">👤 Profile</button>
+        </div>
+    </nav>
+
+    <!-- ═══════ THREE-PANEL LAYOUT ═══════ -->
+    <div class="app">
+
+        <!-- ──── CHAT (left) ──── -->
+        <div class="chat">
+            <div class="panel-hdr">💬 Chat <span style="font-size:10px;color:var(--dim)">Session active</span></div>
+            <div class="chat-msgs">
+                <div class="msg u">Plan a 5-day trip to Kyoto in April. I love temples and local food. I've already
+                    planned days 1 and 2 — just help me with the rest. My budget is around $150/day.<div class="ts">
+                        10:02 AM</div>
+                </div>
+                <div class="msg a">I've loaded your profile and I can see you enjoy cultural experiences at a moderate
+                    pace. I'll keep that in mind!<br><br>I've preserved your plans for <b>Days 1–2</b> and generated
+                    <b>Days 3–5</b> with temple visits, local dining, and a tea ceremony. I've also added flight and
+                    hotel suggestions with estimated costs, plus travel times between each activity. Check out the
+                    itinerary →<div class="ts">Atlas · 10:04 AM</div>
+                </div>
+                <div class="msg u">Day 4 looks too packed. Can you make it more relaxed and add a ramen spot for lunch?
+                    <div class="ts">10:06 AM</div>
+                </div>
+                <div class="msg a">Done! I've reduced Day 4 from 5 to 3 activities, added <b>Ichiran Ramen</b> for lunch
+                    (~¥980 / $7), and kept the afternoon as free time in Gion. The daily estimate dropped from $62 to
+                    $42.<div class="ts">Atlas · 10:07 AM</div>
+                </div>
+            </div>
+            <div class="chat-bar">
+                <input class="chat-in" placeholder="Describe your trip or refine the itinerary…" />
+                <button class="send">Send</button>
+            </div>
+        </div>
+
+        <!-- ──── MAIN ITINERARY (centre) ──── -->
+        <div class="main">
+            <div class="main-hdr">
+                <h2>🗾 Kyoto, Japan — 5 Days</h2>
+                <div class="acts">
+                    <button>📂 Load</button>
+                    <button>📤 Export</button>
+                    <button class="primary">💾 Save Trip</button>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active">Itinerary</div>
+                <div class="tab">Explore</div>
+                <div class="tab">Budget</div>
+                <div class="tab">Notes</div>
+            </div>
+
+            <div class="main-body">
+
+                <!-- ═══ FLIGHTS ═══ -->
+                <div class="overview-section">
+                    <div class="section-label">✈️ Flights</div>
+                    <div class="overview-row">
+                        <div class="ov-card">
+                            <div class="ov-top">
+                                <div class="ov-icon icon-flight">✈️</div>
+                                <div class="ov-price">$620</div>
+                            </div>
+                            <h4>SFO → KIX (Outbound)</h4>
+                            <div class="ov-sub">United UA837 · Economy · 11h 20m direct</div>
+                            <div class="ov-detail">
+                                <span>📅 Mar 31, 10:45 PM</span>
+                                <span>🛬 Apr 1, 5:05 AM +1</span>
+                            </div>
+                        </div>
+                        <div class="ov-card">
+                            <div class="ov-top">
+                                <div class="ov-icon icon-flight">✈️</div>
+                                <div class="ov-price">$580</div>
+                            </div>
+                            <h4>KIX → SFO (Return)</h4>
+                            <div class="ov-sub">ANA NH178 · Economy · 9h 40m direct</div>
+                            <div class="ov-detail">
+                                <span>📅 Apr 6, 5:30 PM</span>
+                                <span>🛬 Apr 6, 11:10 AM (same day)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ ACCOMMODATION ═══ -->
+                <div class="overview-section">
+                    <div class="section-label">🏨 Accommodation</div>
+                    <div class="overview-row">
+                        <div class="ov-card">
+                            <div class="ov-top">
+                                <div class="ov-icon icon-hotel">🏨</div>
+                                <div class="ov-price">$95/night</div>
+                            </div>
+                            <h4>Hotel Kanra Kyoto</h4>
+                            <div class="ov-sub">4-star · Shimogyo Ward · 8.7 rating · Free cancellation</div>
+                            <div class="ov-detail">
+                                <span>📅 Apr 1 – Apr 6 (5 nights)</span>
+                                <span>💰 Total: $475</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ DAY 1 — USER-SUPPLIED ═══ -->
+                <div class="day-section">
+                    <div class="day-hdr">
+                        <div class="day-title">Day 1 — Wed, Apr 1 <span class="badge badge-user">Your plan</span></div>
+                        <div class="day-meta">
+                            <span class="weather">☀️ 19°C</span>
+                            <span class="cost">~$38</span>
+                        </div>
+                    </div>
+                    <div class="timeline">
+                        <div class="act-item">
+                            <div class="act-dot dot-culture"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">8:00 – 11:00</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Fushimi Inari Shrine <span
+                                                class="cat cat-culture">Culture</span></div>
+                                        <div class="act-desc">Hike the iconic thousand vermillion torii gates. Arrive
+                                            early to avoid crowds.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 3 hrs</span>
+                                            <span class="act-cost">Free</span>
+                                            <span>📍 Fushimi Ward</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚃</span> 25 min · JR Nara Line → Kyoto Stn,
+                                then Karasuma Line</div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-food"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">11:30 – 1:00</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Nishiki Market <span class="cat cat-food">Food</span>
+                                        </div>
+                                        <div class="act-desc">Sample street food along "Kyoto's Kitchen" — try the
+                                            tamago skewers, matcha mochi, and fresh yuba.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 1.5 hrs</span>
+                                            <span class="act-cost">~$25</span>
+                                            <span>📍 Nakagyo Ward</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚶</span> 10 min walk south on Teramachi-dori
+                            </div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-sight"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">1:30 – 3:30</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Gion District stroll <span
+                                                class="cat cat-sight">Sightseeing</span></div>
+                                        <div class="act-desc">Wander the preserved machiya streets. Possible
+                                            geisha/maiko sighting in late afternoon.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 2 hrs</span>
+                                            <span class="act-cost">Free</span>
+                                            <span>📍 Higashiyama Ward</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚶</span> 5 min walk to Shirakawa canal</div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-food"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">6:30 – 8:00</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Dinner — Gion Kappa Restaurant <span
+                                                class="cat cat-food">Food</span></div>
+                                        <div class="act-desc">Traditional obanzai (Kyoto home cooking) with seasonal
+                                            small plates and local sake.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 1.5 hrs</span>
+                                            <span class="act-cost">~$13</span>
+                                            <span>📍 Gion</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ DAY 2 — USER-SUPPLIED ═══ -->
+                <div class="day-section">
+                    <div class="day-hdr">
+                        <div class="day-title">Day 2 — Thu, Apr 2 <span class="badge badge-user">Your plan</span></div>
+                        <div class="day-meta">
+                            <span class="weather">🌤️ 18°C</span>
+                            <span class="cost">~$12</span>
+                        </div>
+                    </div>
+                    <div class="timeline">
+                        <div class="act-item">
+                            <div class="act-dot dot-sight"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">9:00 – 11:00</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Kinkaku-ji (Golden Pavilion) <span
+                                                class="cat cat-sight">Sightseeing</span></div>
+                                        <div class="act-desc">Visit the gold-leaf covered pavilion and stroll through
+                                            the mirror-like pond gardens.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 2 hrs</span>
+                                            <span class="act-cost">~$3</span>
+                                            <span>📍 Kita Ward</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚌</span> 40 min · Bus #28 → Arashiyama</div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-culture"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">12:00 – 2:30</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Arashiyama Bamboo Grove <span
+                                                class="cat cat-culture">Culture</span></div>
+                                        <div class="act-desc">Walk through the towering bamboo forest, then cross the
+                                            Togetsukyo Bridge for views.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 2.5 hrs</span>
+                                            <span class="act-cost">Free</span>
+                                            <span>📍 Arashiyama</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚃</span> 20 min · JR Sagano Line → Kyoto Stn
+                            </div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-food"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">3:30 – 4:15</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Afternoon tea at % Arabica Kyoto <span
+                                                class="cat cat-food">Food</span></div>
+                                        <div class="act-desc">Specialty pour-over coffee in a minimal riverside café in
+                                            Arashiyama.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 45 min</span>
+                                            <span class="act-cost">~$5</span>
+                                            <span>📍 Higashiyama</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ DAY 3 — GENERATED ═══ -->
+                <div class="day-section">
+                    <div class="day-hdr">
+                        <div class="day-title">Day 3 — Fri, Apr 3 <span class="badge badge-gen">Generated</span></div>
+                        <div class="day-meta">
+                            <span class="weather">☀️ 21°C</span>
+                            <span class="cost">~$52</span>
+                        </div>
+                    </div>
+                    <div class="timeline">
+                        <div class="act-item">
+                            <div class="act-dot dot-culture"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">8:30 – 11:00</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Kiyomizu-dera Temple <span
+                                                class="cat cat-culture">Culture</span></div>
+                                        <div class="act-desc">Explore the hillside temple with its famous wooden stage
+                                            offering panoramic cherry blossom views.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 2.5 hrs</span>
+                                            <span class="act-cost">~$3</span>
+                                            <span>📍 Higashiyama</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚶</span> 15 min walk down Ninenzaka slope
+                            </div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-food"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">11:30 – 12:30</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Lunch — Omen Noodles <span
+                                                class="cat cat-food">Food</span></div>
+                                        <div class="act-desc">Hand-made udon noodles with seasonal vegetable tempura.
+                                            Local favourite since 1958.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 1 hr</span>
+                                            <span class="act-cost">~$12</span>
+                                            <span>📍 Gion</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚌</span> 15 min · Bus #100 north</div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-culture"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">1:00 – 2:30</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Tea ceremony — Camellia Garden <span
+                                                class="cat cat-culture">Culture</span></div>
+                                        <div class="act-desc">Participate in a traditional matcha tea ceremony in a
+                                            private tatami room.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 1.5 hrs</span>
+                                            <span class="act-cost">~$25</span>
+                                            <span>📍 Higashiyama</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚶</span> 5 min walk to canal path</div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-sight"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">3:00 – 4:30</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Philosopher's Path stroll <span
+                                                class="cat cat-sight">Sightseeing</span></div>
+                                        <div class="act-desc">Walk the scenic 2 km canal-side path lined with cherry
+                                            trees in full bloom.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 1.5 hrs</span>
+                                            <span class="act-cost">Free</span>
+                                            <span>📍 Sakyo Ward</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚃</span> 20 min · subway Tozai Line → Kyoto
+                                Stn area</div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-food"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">6:30 – 8:00</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Dinner — Kyoto-style yakitori at Sumiyaki Gonpachi <span
+                                                class="cat cat-food">Food</span></div>
+                                        <div class="act-desc">Charcoal-grilled chicken skewers with craft beer in a cozy
+                                            izakaya setting.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 1.5 hrs</span>
+                                            <span class="act-cost">~$12</span>
+                                            <span>📍 Shimogyo</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ DAY 4 — GENERATED + REFINED ═══ -->
+                <div class="day-section">
+                    <div class="day-hdr">
+                        <div class="day-title">Day 4 — Sat, Apr 4 <span class="badge badge-refined">Refined</span></div>
+                        <div class="day-meta">
+                            <span class="weather">🌧️ 16°C</span>
+                            <span class="cost">~$42</span>
+                        </div>
+                    </div>
+                    <div
+                        style="background:var(--orange-bg);border:1px solid rgba(245,158,11,.2);border-radius:var(--r);padding:8px 12px;margin-bottom:10px;font-size:11.5px;color:var(--orange)">
+                        ✏️ Refined: reduced from 5 → 3 activities per your request. Added Ichiran Ramen for lunch.
+                    </div>
+                    <div class="timeline">
+                        <div class="act-item">
+                            <div class="act-dot dot-food"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">10:00 – 11:00</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Brunch — Ichiran Ramen Kyoto <span
+                                                class="cat cat-food">Food</span></div>
+                                        <div class="act-desc">Rich tonkotsu broth in a solo booth — customise firmness,
+                                            richness, and garlic level.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 1 hr</span>
+                                            <span class="act-cost">~$7</span>
+                                            <span>📍 Kawaramachi</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚌</span> 12 min · Bus #206 or short taxi
+                            </div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-culture"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">11:30 – 1:30</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Kyoto National Museum <span
+                                                class="cat cat-culture">Culture</span></div>
+                                        <div class="act-desc">Explore Japanese art, ceramics, and historical artefacts.
+                                            Perfect indoor option for a rainy day.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 2 hrs</span>
+                                            <span class="act-cost">~$5</span>
+                                            <span>📍 Higashiyama</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚶</span> 12 min walk through Gion</div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-leisure"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">2:00 – open</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Free afternoon — Gion at your own pace <span
+                                                class="cat cat-leisure">Leisure</span></div>
+                                        <div class="act-desc">Browse craft shops, visit Yasaka Shrine, or relax at a tea
+                                            house. No schedule pressure.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 Flexible</span>
+                                            <span class="act-cost">~$30</span>
+                                            <span>📍 Gion</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ DAY 5 — GENERATED ═══ -->
+                <div class="day-section">
+                    <div class="day-hdr">
+                        <div class="day-title">Day 5 — Sun, Apr 5 <span class="badge badge-gen">Generated</span></div>
+                        <div class="day-meta">
+                            <span class="weather">⛅ 20°C</span>
+                            <span class="cost">~$55</span>
+                        </div>
+                    </div>
+                    <div class="timeline">
+                        <div class="act-item">
+                            <div class="act-dot dot-culture"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">9:00 – 10:30</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Ryoan-ji Zen Garden <span
+                                                class="cat cat-culture">Culture</span></div>
+                                        <div class="act-desc">Contemplate the famous 15-stone rock garden — a
+                                            masterpiece of Zen minimalism.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 1.5 hrs</span>
+                                            <span class="act-cost">~$4</span>
+                                            <span>📍 Ukyo Ward</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚌</span> 15 min · Bus #59</div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-sight"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">11:00 – 12:30</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Nijo Castle <span
+                                                class="cat cat-sight">Sightseeing</span></div>
+                                        <div class="act-desc">Tour the UNESCO-listed Tokugawa shogunate residence,
+                                            famous for "nightingale" squeaking floors.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 1.5 hrs</span>
+                                            <span class="act-cost">~$5</span>
+                                            <span>📍 Nakagyo Ward</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚃</span> 10 min · subway to Karasuma Oike
+                            </div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-food"></div>
+                            <div class="act-card">
+                                <div class="act-top">
+                                    <div class="act-time">1:00 – 1:45</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Lunch — Kyoto ramen at Tenkaippin <span
+                                                class="cat cat-food">Food</span></div>
+                                        <div class="act-desc">Thick, creamy chicken broth ramen — a Kyoto original since
+                                            1971.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 45 min</span>
+                                            <span class="act-cost">~$8</span>
+                                            <span>📍 Karasuma area</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="travel-conn">
+                            <div class="conn-dot"></div>
+                            <div class="conn-line"><span class="conn-icon">🚕</span> 15 min taxi (~$8)</div>
+                        </div>
+
+                        <div class="act-item">
+                            <div class="act-dot dot-food"></div>
+                            <div class="act-card" style="border-color:var(--orange)">
+                                <div class="act-top">
+                                    <div class="act-time">6:00 – 8:30</div>
+                                    <div class="act-info">
+                                        <div class="act-title">Farewell kaiseki — Kikunoi ⭐ <span
+                                                class="cat cat-food">Food</span></div>
+                                        <div class="act-desc">Multi-course traditional Kyoto cuisine. Michelin-starred,
+                                            reservations required. Season's best ingredients.</div>
+                                        <div class="act-foot">
+                                            <span>🕐 2.5 hrs</span>
+                                            <span class="act-cost">~$30</span>
+                                            <span>📍 Higashiyama</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ──── SIDEBAR (right) ──── -->
+        <div class="sidebar">
+            <div class="map-wrap">
+                <svg viewBox="0 0 400 500">
+                    <rect width="400" height="500" fill="#0f2027" />
+                    <path
+                        d="M200,80 Q220,120 215,160 Q230,200 225,240 Q235,280 220,320 Q210,360 200,400 Q190,360 180,320 Q165,280 175,240 Q170,200 185,160 Q180,120 200,80Z"
+                        fill="#1a3a4a" stroke="#2a5a6a" stroke-width="1" />
+                    <path d="M210,150 Q240,170 250,200 Q240,220 220,210 Q210,190 210,150Z" fill="#1a3a4a"
+                        stroke="#2a5a6a" stroke-width="1" />
+                </svg>
+                <div class="map-pin"></div>
+                <div class="map-lbl">Kyoto</div>
+            </div>
+
+            <div class="sidebar-section">
+                <h4>🏯 Kyoto, Japan</h4>
+                <p>Japan's cultural capital — 2,000+ temples and shrines, traditional tea houses, geisha districts, and
+                    spectacular cherry blossoms in spring.</p>
+                <div class="coord">📍 35.0116° N, 135.7681° E</div>
+                <div class="tag-row">
+                    <span class="tag">🌸 Cherry blossoms</span>
+                    <span class="tag">⛩ Temples</span>
+                    <span class="tag">🍜 Food scene</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h4>💰 Trip Budget Summary</h4>
+                <table class="cost-table">
+                    <tr>
+                        <td>✈️ Flights</td>
+                        <td>$1,200</td>
+                    </tr>
+                    <tr>
+                        <td>🏨 5 nights lodging</td>
+                        <td>$475</td>
+                    </tr>
+                    <tr>
+                        <td>🍜 Food &amp; dining</td>
+                        <td>$147</td>
+                    </tr>
+                    <tr>
+                        <td>🎟️ Activities &amp; entry</td>
+                        <td>$52</td>
+                    </tr>
+                    <tr>
+                        <td>🚃 Transport (local)</td>
+                        <td>$35</td>
+                    </tr>
+                    <tr>
+                        <td><b>Total estimate</b></td>
+                        <td><b>$1,909</b></td>
+                    </tr>
+                </table>
+                <p style="margin-top:8px;font-size:11px;color:var(--dim)">~$382/day · based on estimates, not live
+                    pricing</p>
+            </div>
+
+            <div class="sidebar-section">
+                <h4>📊 Trip Stats</h4>
+                <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">
+                    <div>📅 5 days · Apr 1–5, 2026</div>
+                    <div>🎯 18 activities planned</div>
+                    <div>🚶 ~12 km walking total</div>
+                    <div>🕐 ~26 hrs of scheduled time</div>
+                    <div>🏷️ Top: Culture (7), Food (7), Sightseeing (4)</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═══════ USER PROFILE MODAL ═══════ -->
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal-box">
+            <div class="modal-hdr">
+                <h3>👤 Travel Preferences</h3>
+                <button class="modal-close" onclick="toggleModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="stat">Trips saved: <strong>7</strong></div>
+                <div class="stat">Last updated: <strong>Feb 15, 2026</strong></div>
+                <hr style="border-color:var(--border);margin:12px 0">
+                <div class="fg">
+                    <label>Favourite Destination Types</label>
+                    <div class="tag-list">
+                        <span class="tag-ed">City <span class="rm">×</span></span>
+                        <span class="tag-ed">Cultural / Historical <span class="rm">×</span></span>
+                        <span class="tag-ed">Beach <span class="rm">×</span></span>
+                    </div>
+                    <input style="margin-top:6px" placeholder="Add a type…" />
+                </div>
+                <div class="fg">
+                    <label>Favourite Activity Categories</label>
+                    <div class="tag-list">
+                        <span class="tag-ed">Food <span class="rm">×</span></span>
+                        <span class="tag-ed">Culture <span class="rm">×</span></span>
+                        <span class="tag-ed">Sightseeing <span class="rm">×</span></span>
+                        <span class="tag-ed">Adventure <span class="rm">×</span></span>
+                    </div>
+                    <input style="margin-top:6px" placeholder="Add a category…" />
+                </div>
+                <div class="fg"><label>Preferred Pace</label><select>
+                        <option>Relaxed — 2–3 activities/day</option>
+                        <option selected>Moderate — 3–4 activities/day</option>
+                        <option>Packed — 5+ activities/day</option>
+                    </select></div>
+                <div class="fg"><label>Typical Daily Budget (USD)</label><input type="number" value="150" /></div>
+                <div class="fg">
+                    <label>Past Destinations</label>
+                    <div class="tag-list">
+                        <span class="tag-ed">Tokyo</span><span class="tag-ed">Barcelona</span><span
+                            class="tag-ed">Bali</span><span class="tag-ed">Reykjavik</span><span
+                            class="tag-ed">Lisbon</span><span class="tag-ed">Marrakech</span><span
+                            class="tag-ed">Seoul</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-ft">
+                <button class="btn-c" onclick="toggleModal()">Cancel</button>
+                <button class="btn-s" onclick="toggleModal()">Save Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <script>function toggleModal() { document.getElementById('profileModal').classList.toggle('active') }</script>
+</body>
+
+</html>

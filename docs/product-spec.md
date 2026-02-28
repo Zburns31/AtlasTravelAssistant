@@ -23,6 +23,7 @@ Atlas provides a conversational interface powered by a large language model. Use
 | **LLM-agnostic design** | The active model (GPT-4o, Claude 3.5, Gemini Flash, etc.) is controlled by a single environment variable. No code changes are required to switch providers. |
 | **Conversational UI** | Users interact through a persistent chat panel. Follow-up requests ("Make day 3 more relaxed") refine the itinerary in the same session. |
 | **Structured output** | The LLM produces Pydantic-validated `Itinerary` objects, not free-form text. The UI renders structured cards, not raw chat. |
+| **Wanderlog-style itinerary** | Itineraries include flights, accommodation, time-blocked daily activities with start/end times, travel-time connectors between activities (mode + ETA), and per-activity cost estimates — all displayed in a visual timeline. |
 | **Personalised recommendations** | Atlas builds a persistent user profile from saved trips — preferred destinations, activity types, pace, and budget — and uses it to tailor every future itinerary automatically. |
 | **Partial itinerary completion** | Users can supply a half-finished itinerary (e.g. "I've already booked days 1–2, help me plan the rest") and Atlas fills in the gaps while respecting existing plans. |
 | **Extensible tool architecture** | New data sources (hotels, maps, events) can be added as LangChain `@tool` functions without touching the agent or UI. |
@@ -53,6 +54,12 @@ Atlas provides a conversational interface powered by a large language model. Use
 | **FR-18** | The system shall accept a partial itinerary — one or more pre-filled `ItineraryDay` entries — and generate only the missing days while preserving the user-supplied content unchanged. |
 | **FR-19** | When completing a partial itinerary, the system shall ensure continuity (no duplicate activities, logical geographic flow) between user-supplied and generated days. |
 | **FR-20** | The user shall be able to view and manually edit their `UserProfile` preferences through the UI. |
+| **FR-21** | The system shall suggest flights (outbound and return) with airline, flight number, departure/arrival times, duration, cabin class, and estimated price. Flight suggestions are informational only — no booking in v1. |
+| **FR-22** | The system shall suggest accommodation/lodging for the trip duration, including property name, star rating, nightly rate, total cost, check-in/check-out dates, and a brief description. |
+| **FR-23** | Each activity in the itinerary shall include a time block (`start_time`, `end_time`) indicating when the activity begins and ends, plus an `estimated_cost_usd` and a `location` label. |
+| **FR-24** | Between consecutive activities in a day, the system shall insert a `TravelSegment` showing the transit mode (walk, bus, train, taxi), estimated travel time in minutes, and a brief route description. |
+| **FR-25** | The system shall compute and display a per-day cost estimate (sum of activity costs + local transport) and a total trip budget summary (flights + lodging + daily costs). |
+| **FR-26** | Each activity shall be assigned a category (`sightseeing`, `food`, `culture`, `adventure`, `leisure`) that drives colour-coded display in the UI timeline. |
 
 ---
 
@@ -296,9 +303,12 @@ No code changes, no additional packages, and no extra API keys are needed to swi
 |---|---|---|---|
 | `TripPreferences` | `traveler_count: int`, `budget_usd: float \| None`, `interests: list[str]`, `accessibility_needs: list[str]` | No | Embedded in `Itinerary` |
 | `Destination` | `name: str`, `country: str`, `iata_code: str \| None`, `coordinates: tuple[float, float] \| None` | No | Embedded in `Itinerary`; coordinates feed the map panel |
-| `Activity` | `title: str`, `description: str`, `duration_hours: float`, `category: str` | **Yes** | Child of `ItineraryDay` |
-| `ItineraryDay` | `date: date`, `activities: list[Activity]`, `notes: str` | **Yes** | Child of `Itinerary` |
-| `Itinerary` | `destination: Destination`, `start_date: date`, `end_date: date`, `preferences: TripPreferences`, `days: list[ItineraryDay]`, `created_at: datetime` | No | Root aggregate; validated: `end_date > start_date` |
+| `Activity` | `title: str`, `description: str`, `duration_hours: float`, `category: str`, `start_time: str \| None` (HH:MM), `end_time: str \| None` (HH:MM), `estimated_cost_usd: float \| None`, `location: str \| None`, `coordinates: tuple[float, float] \| None` | **Yes** | Child of `ItineraryDay` |
+| `TravelSegment` | `mode: str` (`walk` \| `bus` \| `train` \| `taxi` \| `other`), `duration_minutes: int`, `description: str`, `estimated_cost_usd: float \| None` | **Yes** | Inserted between consecutive `Activity` items within an `ItineraryDay` |
+| `ItineraryDay` | `date: date`, `activities: list[Activity]`, `travel_segments: list[TravelSegment]`, `notes: str`, `source: str` (`user` \| `generated` \| `refined`) | **Yes** | Child of `Itinerary` |
+| `Flight` | `airline: str`, `flight_number: str`, `departure_airport: str`, `arrival_airport: str`, `departure_time: datetime`, `arrival_time: datetime`, `duration_hours: float`, `cabin_class: str`, `estimated_cost_usd: float \| None` | **Yes** | Child of `Itinerary` (list of 0–N flights) |
+| `Accommodation` | `name: str`, `star_rating: float \| None`, `nightly_rate_usd: float \| None`, `total_cost_usd: float \| None`, `check_in: date`, `check_out: date`, `description: str`, `location: str \| None`, `coordinates: tuple[float, float] \| None` | **Yes** | Child of `Itinerary` (list of 0–N accommodations) |
+| `Itinerary` | `destination: Destination`, `start_date: date`, `end_date: date`, `preferences: TripPreferences`, `days: list[ItineraryDay]`, `flights: list[Flight]`, `accommodations: list[Accommodation]`, `created_at: datetime` | No | Root aggregate; validated: `end_date > start_date` |
 | `ChatMessage` | `role: str` (`"user"` \| `"assistant"`), `content: str`, `timestamp: datetime` | No | Stored in `chat-history-store`; passed as `chat_history` to agent |
 | `UserProfile` | `favourite_destination_types: list[str]`, `favourite_categories: list[str]`, `preferred_pace: str` (`"relaxed"` \| `"moderate"` \| `"packed"`), `typical_budget_usd: float \| None`, `past_destinations: list[str]`, `trip_count: int`, `updated_at: datetime` | No | Loaded from `~/.atlas/user_profile.json`; injected into agent prompt context; updated on each itinerary save |
 
@@ -382,9 +392,9 @@ def sample_itinerary():
 
 | Constraint | Detail |
 |---|---|
-| No flight search | Airline/flight search is explicitly excluded from v1 scope |
+| Flight suggestions only | The agent can suggest flights with estimated pricing, but no live booking or real-time fare lookup is performed in v1 |
 | No user authentication | v1 is a single-user local deployment; no login, sessions, or multi-tenancy |
-| No hotel booking | Hotel search is a future capability; v1 surfaces hotel options as itinerary suggestions only |
+| Accommodation suggestions only | The agent suggests lodging with estimated nightly rates; no live availability or booking in v1 |
 | No real-time pricing | Budget estimates in itineraries are indicative, not sourced from live pricing APIs |
 | Local profile only | User profile is stored locally (`~/.atlas/user_profile.json`); no cloud sync or multi-device support in v1 |
 | English only | v1 UI and LLM prompts are English-only |

@@ -209,13 +209,54 @@ class Activity(BaseModel):
     title: str
     description: str
     duration_hours: float
-    category: str  # "sightseeing" | "food" | "adventure" | "culture"
+    category: str  # "sightseeing" | "food" | "adventure" | "culture" | "leisure"
+    start_time: str | None = None  # "HH:MM" 24-hr format
+    end_time: str | None = None    # "HH:MM" 24-hr format
+    estimated_cost_usd: float | None = None
+    location: str | None = None    # human-readable place, e.g. "Fushimi Ward"
+    coordinates: tuple[float, float] | None = None  # (lat, lon)
+
+class TravelSegment(BaseModel):
+    """Transit between two consecutive activities."""
+    model_config = ConfigDict(frozen=True)
+    mode: str  # "walk" | "bus" | "train" | "taxi" | "other"
+    duration_minutes: int
+    description: str  # e.g. "JR Nara Line → Kyoto Station"
+    estimated_cost_usd: float | None = None
 
 class ItineraryDay(BaseModel):
     model_config = ConfigDict(frozen=True)
     date: date
     activities: list[Activity] = []
+    travel_segments: list[TravelSegment] = []  # between consecutive activities
     notes: str = ""
+    source: str = "generated"  # "user" | "generated" | "refined"
+
+class Flight(BaseModel):
+    """Suggested flight — informational only, no booking in v1."""
+    model_config = ConfigDict(frozen=True)
+    airline: str
+    flight_number: str
+    departure_airport: str
+    arrival_airport: str
+    departure_time: datetime
+    arrival_time: datetime
+    duration_hours: float
+    cabin_class: str = "economy"
+    estimated_cost_usd: float | None = None
+
+class Accommodation(BaseModel):
+    """Suggested lodging — informational only, no booking in v1."""
+    model_config = ConfigDict(frozen=True)
+    name: str
+    star_rating: float | None = None
+    nightly_rate_usd: float | None = None
+    total_cost_usd: float | None = None
+    check_in: date
+    check_out: date
+    description: str = ""
+    location: str | None = None
+    coordinates: tuple[float, float] | None = None
 
 class Itinerary(BaseModel):
     destination: Destination
@@ -223,6 +264,8 @@ class Itinerary(BaseModel):
     end_date: date
     preferences: TripPreferences
     days: list[ItineraryDay] = []
+    flights: list[Flight] = []
+    accommodations: list[Accommodation] = []
     created_at: datetime = datetime.now(timezone.utc)
 
     @field_validator("end_date")
@@ -338,7 +381,23 @@ from atlas.tools import ALL_TOOLS
 SYSTEM_PROMPT = """You are Atlas, an expert AI travel assistant.
 Help users plan detailed, personalized trips. Use your tools to fetch
 real-time weather and discover destinations.
-Always present itineraries in a clear, day-by-day format.
+
+Itinerary format:
+- Include suggested flights (outbound + return) with airline, times,
+  duration, cabin class, and estimated cost.
+- Suggest accommodation with property name, star rating, nightly rate,
+  and total cost for the stay.
+- Break each day into time-blocked activities: every activity must have
+  a start_time (HH:MM) and end_time (HH:MM), a category, an
+  estimated_cost_usd, and a location label.
+- Between consecutive activities, insert a TravelSegment with the
+  transit mode (walk/bus/train/taxi), duration in minutes, and a
+  brief description of the route.
+- Assign each activity a category: sightseeing, food, culture,
+  adventure, or leisure.
+- At the end of each day, the sum of activity costs gives the daily
+  estimate. The total trip budget = flights + lodging + sum of daily
+  estimates.
 
 Personalisation:
 - At the start of each conversation, load the user's profile with the
@@ -474,6 +533,8 @@ def sample_itinerary():
         start_date=date(2026, 4, 1),
         end_date=date(2026, 4, 6),
         preferences=TripPreferences(),
+        flights=[],
+        accommodations=[],
     )
 ```
 
