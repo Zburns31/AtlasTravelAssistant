@@ -604,6 +604,114 @@
             color: var(--green)
         }
 
+        /* Expand/collapse toggle */
+        .act-toggle {
+            background: none;
+            border: none;
+            color: var(--dim);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 2px 4px;
+            line-height: 1;
+            transition: transform .2s;
+            flex-shrink: 0
+        }
+
+        .act-toggle:hover {
+            color: var(--accent)
+        }
+
+        .act-toggle.open {
+            transform: rotate(180deg)
+        }
+
+        /* Expandable detail section */
+        .act-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .25s ease, padding .25s ease;
+            border-top: 0 solid var(--border);
+            padding: 0 0;
+            font-size: 12px;
+            color: var(--muted);
+            line-height: 1.5
+        }
+
+        .act-detail.open {
+            max-height: 500px;
+            border-top: 1px solid var(--border);
+            padding: 10px 0 4px
+        }
+
+        .act-detail .detail-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            margin-bottom: 4px;
+            margin-top: 8px
+        }
+
+        .act-detail .detail-label:first-child {
+            margin-top: 0
+        }
+
+        .act-detail a {
+            color: var(--accent);
+            text-decoration: none
+        }
+
+        .act-detail a:hover {
+            text-decoration: underline
+        }
+
+        .act-detail .detail-note {
+            background: var(--bg4);
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 11.5px;
+            color: var(--text);
+            margin-top: 4px
+        }
+
+        .act-detail .detail-note.user-note {
+            border-left: 3px solid var(--accent)
+        }
+
+        .act-detail .detail-note.agent-note {
+            border-left: 3px solid var(--green)
+        }
+
+        .act-detail .detail-links {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            margin-top: 4px
+        }
+
+        .act-detail .detail-links a {
+            font-size: 11.5px;
+            display: flex;
+            align-items: center;
+            gap: 4px
+        }
+
+        .act-detail .detail-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px
+        }
+
+        .act-detail .detail-tags span {
+            background: var(--bg4);
+            color: var(--dim);
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 10px
+        }
+
         /* Travel connector */
         .travel-conn {
             position: relative;
@@ -660,28 +768,68 @@
 
         .map-pin {
             position: absolute;
-            top: 35%;
-            left: 52%;
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             background: var(--red);
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
             border: 2px solid #fff;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, .4)
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .4);
+            cursor: pointer;
+            z-index: 2;
+            transition: transform .15s, width .15s, height .15s
+        }
+
+        .map-pin:hover {
+            width: 18px;
+            height: 18px;
+            z-index: 3
+        }
+
+        .map-pin:hover+.map-lbl {
+            opacity: 1
+        }
+
+        .pin-culture {
+            background: var(--purple)
+        }
+
+        .pin-food {
+            background: var(--orange)
+        }
+
+        .pin-sight {
+            background: var(--blue)
+        }
+
+        .pin-hotel {
+            background: var(--purple)
+        }
+
+        .pin-leisure {
+            background: var(--teal)
         }
 
         .map-lbl {
             position: absolute;
-            top: calc(35% + 20px);
-            left: 52%;
             transform: translateX(-50%);
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 600;
             color: #fff;
-            background: rgba(0, 0, 0, .7);
-            padding: 2px 8px;
-            border-radius: 4px
+            background: rgba(0, 0, 0, .75);
+            padding: 2px 6px;
+            border-radius: 3px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .15s;
+            z-index: 4
+        }
+
+        .map-lbl.always {
+            opacity: 1;
+            font-size: 10px;
+            padding: 2px 8px
         }
 
         .sidebar-section {
@@ -1072,6 +1220,23 @@
                                             <span>📍 Fushimi Ward</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle open" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail open">
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">The shrine has over 10,000 torii gates winding 4
+                                        km up Mt Inari. Start before 8 AM to beat tour groups. The full hike takes 2–3
+                                        hours; turn back at the Yotsutsuji intersection for a shorter 45-min loop with
+                                        great city views.</div>
+                                    <div class="detail-links">
+                                        <a href="https://inari.jp/en/" target="_blank">🔗 Official Site</a>
+                                        <a href="https://maps.google.com/?q=Fushimi+Inari+Taisha" target="_blank">📍
+                                            Google Maps</a>
+                                        <a href="https://www.japan-guide.com/e/e3915.html" target="_blank">📖 Japan
+                                            Guide</a>
+                                    </div>
+                                    <div class="detail-tags">
+                                        <span>Shinto</span><span>Hiking</span><span>Photography</span></div>
                                 </div>
                             </div>
                         </div>
@@ -1097,6 +1262,22 @@
                                             <span class="act-cost">~$25</span>
                                             <span>📍 Nakagyo Ward</span>
                                         </div>
+                                    </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">📝 Your Notes</div>
+                                    <div class="detail-note user-note">Try the soy-milk donuts near the east entrance!
+                                        Also pick up matcha kit-kats as souvenirs here.</div>
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">Over 100 stalls line the 390 m arcade. Most
+                                        shops close by 6 PM. Best stalls: Aritsugu (knives), Konnamonja (octopus eggs),
+                                        and Miki Keiran (dashimaki tamago).</div>
+                                    <div class="detail-links">
+                                        <a href="https://www.kyoto-nishiki.or.jp/en/" target="_blank">🔗 Official
+                                            Site</a>
+                                        <a href="https://maps.google.com/?q=Nishiki+Market+Kyoto" target="_blank">📍
+                                            Google Maps</a>
                                     </div>
                                 </div>
                             </div>
@@ -1124,6 +1305,20 @@
                                             <span>📍 Higashiyama Ward</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">The most atmospheric time to visit is late
+                                        afternoon (4–6 PM) when geiko and maiko head to evening engagements.
+                                        Hanamikoji-dori is the main street — look for ochaya (tea houses) with
+                                        distinctive lanterns.</div>
+                                    <div class="detail-links">
+                                        <a href="https://www.japan-guide.com/e/e3902.html" target="_blank">📖 Japan
+                                            Guide</a>
+                                        <a href="https://maps.google.com/?q=Gion+District+Kyoto" target="_blank">📍
+                                            Google Maps</a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1149,6 +1344,12 @@
                                             <span>📍 Gion</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">📝 Your Notes</div>
+                                    <div class="detail-note user-note">Sarah recommended this place — ask for a seat at
+                                        the counter. Try the tofu course!</div>
                                 </div>
                             </div>
                         </div>
@@ -1181,6 +1382,23 @@
                                             <span>📍 Kita Ward</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">Admission includes a calligraphy talisman. Best
+                                        photos from across the Mirror Pond (Kyoko-chi). Arrive at opening (9 AM) — it
+                                        gets packed by 10:30. The top two floors are covered in actual gold leaf.</div>
+                                    <div class="detail-links">
+                                        <a href="https://www.shokoku-ji.jp/en/kinkakuji/" target="_blank">🔗 Official
+                                            Site</a>
+                                        <a href="https://maps.google.com/?q=Kinkaku-ji+Kyoto" target="_blank">📍 Google
+                                            Maps</a>
+                                        <a href="https://www.japan-guide.com/e/e3908.html" target="_blank">📖 Japan
+                                            Guide</a>
+                                    </div>
+                                    <div class="detail-tags"><span>UNESCO</span><span>Photography</span><span>Zen</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1206,6 +1424,22 @@
                                             <span>📍 Arashiyama</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle open" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail open">
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">The grove is most magical at dawn when light
+                                        filters through the stalks. After the walk, cross Togetsukyo Bridge for mountain
+                                        views. Nearby: Tenryu-ji Temple (UNESCO, ¥500) and the monkey park on Mt
+                                        Iwatayama (¥550, great city views).</div>
+                                    <div class="detail-links">
+                                        <a href="https://www.japan-guide.com/e/e3912.html" target="_blank">📖 Japan
+                                            Guide</a>
+                                        <a href="https://maps.google.com/?q=Arashiyama+Bamboo+Grove" target="_blank">📍
+                                            Google Maps</a>
+                                    </div>
+                                    <div class="detail-tags">
+                                        <span>Nature</span><span>Photography</span><span>Iconic</span></div>
                                 </div>
                             </div>
                         </div>
@@ -1232,6 +1466,12 @@
                                             <span>📍 Higashiyama</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">📝 Your Notes</div>
+                                    <div class="detail-note user-note">Get the iced latte — it's their best drink. The
+                                        Higashiyama shop has the best river views.</div>
                                 </div>
                             </div>
                         </div>
@@ -1264,6 +1504,24 @@
                                             <span>📍 Higashiyama</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">The wooden stage juts 13 m over the hillside —
+                                        no nails used. "Kiyomizu" means pure water; drink from the Otowa waterfall for
+                                        longevity, success in love, or wisdom (pick one stream). The approach streets
+                                        Ninenzaka and Sannenzaka have excellent souvenir shops.</div>
+                                    <div class="detail-links">
+                                        <a href="https://www.kiyomizudera.or.jp/en/" target="_blank">🔗 Official
+                                            Site</a>
+                                        <a href="https://maps.google.com/?q=Kiyomizu-dera" target="_blank">📍 Google
+                                            Maps</a>
+                                        <a href="https://whc.unesco.org/en/list/688" target="_blank">🏛️ UNESCO
+                                            Listing</a>
+                                    </div>
+                                    <div class="detail-tags"><span>UNESCO</span><span>Buddhist</span><span>Cherry
+                                            Blossom</span></div>
                                 </div>
                             </div>
                         </div>
@@ -1290,6 +1548,12 @@
                                             <span>📍 Gion</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">📝 Your Notes</div>
+                                    <div class="detail-note user-note">Lunch spot from that YouTube video! Get the cold
+                                        dipping udon with seasonal veg. Cash only I think.</div>
                                 </div>
                             </div>
                         </div>
@@ -1315,6 +1579,18 @@
                                             <span>📍 Higashiyama</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">Sessions run every 90 min. English-speaking host
+                                        explains each step. You'll learn to whisk matcha and enjoy a seasonal wagashi
+                                        sweet. Wear socks (no bare feet on tatami). Book 2 days ahead via their website.
+                                    </div>
+                                    <div class="detail-links">
+                                        <a href="https://maps.google.com/?q=Camellia+Garden+Kyoto+tea+ceremony"
+                                            target="_blank">📍 Google Maps</a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1339,6 +1615,19 @@
                                             <span class="act-cost">Free</span>
                                             <span>📍 Sakyo Ward</span>
                                         </div>
+                                    </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">The 2 km path follows a canal from Ginkaku-ji to
+                                        Nanzen-ji. Peak cherry blossom in early April — petals float on the water. Named
+                                        after philosopher Nishida Kitaro, who meditated here during daily walks.</div>
+                                    <div class="detail-links">
+                                        <a href="https://www.japan-guide.com/e/e3906.html" target="_blank">📖 Japan
+                                            Guide</a>
+                                        <a href="https://maps.google.com/?q=Philosophers+Path+Kyoto" target="_blank">📍
+                                            Google Maps</a>
                                     </div>
                                 </div>
                             </div>
@@ -1366,6 +1655,16 @@
                                             <span>📍 Shimogyo</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">📝 Your Notes</div>
+                                    <div class="detail-note user-note">Order the tsukune (chicken meatball) and the
+                                        negima. 2 drinks max — early start tomorrow!</div>
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">This izakaya specialises in bincho-tan charcoal
+                                        grilling. Counter seats let you watch the grill master. Popular with locals —
+                                        expect a 15-min wait after 7 PM. No reservations for groups under 4.</div>
                                 </div>
                             </div>
                         </div>
@@ -1402,6 +1701,12 @@
                                             <span>📍 Kawaramachi</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">📝 Your Notes</div>
+                                    <div class="detail-note user-note">Order firm noodles (kata-men), extra-rich broth,
+                                        max garlic. Add extra noodles (kae-dama) for ¥210 — totally worth it.</div>
                                 </div>
                             </div>
                         </div>
@@ -1428,6 +1733,19 @@
                                             <span>📍 Higashiyama</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">The Heisei Chishinkan wing has rotating special
+                                        exhibitions — check their site for what’s on. The permanent collection covers
+                                        1000+ years of Kyoto art. Audio guide available in English (¥500). Great
+                                        rainy-day option.</div>
+                                    <div class="detail-links">
+                                        <a href="https://www.kyohaku.go.jp/eng/" target="_blank">🔗 Museum Website</a>
+                                        <a href="https://maps.google.com/?q=Kyoto+National+Museum" target="_blank">📍
+                                            Google Maps</a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1453,6 +1771,13 @@
                                             <span>📍 Gion</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">📝 Your Notes</div>
+                                    <div class="detail-note user-note">Check out that vintage kimono shop on
+                                        Shinmonzen-dori. Also want to try the matcha parfait at Tsujiri on Shijo-dori.
+                                        If energy left, Yasaka Shrine for sunset.</div>
                                 </div>
                             </div>
                         </div>
@@ -1485,6 +1810,21 @@
                                             <span>📍 Ukyo Ward</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">The karesansui (dry garden) has 15 stones
+                                        arranged so you can never see all 15 from any single angle. Sit on the veranda
+                                        and contemplate — it’s designed for meditation. The surrounding moss garden and
+                                        mirror pond are also worth exploring.</div>
+                                    <div class="detail-links">
+                                        <a href="http://www.ryoanji.jp/smph/eng/" target="_blank">🔗 Official Site</a>
+                                        <a href="https://maps.google.com/?q=Ryoan-ji+Kyoto" target="_blank">📍 Google
+                                            Maps</a>
+                                    </div>
+                                    <div class="detail-tags"><span>UNESCO</span><span>Zen</span><span>Meditation</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1510,6 +1850,24 @@
                                             <span>📍 Nakagyo Ward</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">The “nightingale floors” chirp when walked on —
+                                        an ingenious intruder alarm. See the Ninomaru Palace with 3,000+ painted sliding
+                                        doors. This is where the Tokugawa shogunate declared the end of feudal rule in
+                                        1867.</div>
+                                    <div class="detail-links">
+                                        <a href="https://nijo-jocastle.city.kyoto.lg.jp/?lang=en" target="_blank">🔗
+                                            Official Site</a>
+                                        <a href="https://maps.google.com/?q=Nijo+Castle+Kyoto" target="_blank">📍 Google
+                                            Maps</a>
+                                        <a href="https://whc.unesco.org/en/list/588" target="_blank">🏛️ UNESCO
+                                            Listing</a>
+                                    </div>
+                                    <div class="detail-tags">
+                                        <span>UNESCO</span><span>History</span><span>Architecture</span></div>
                                 </div>
                             </div>
                         </div>
@@ -1536,6 +1894,12 @@
                                             <span>📍 Karasuma area</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">📝 Your Notes</div>
+                                    <div class="detail-note user-note">Go for “kotteri” (thick) broth, not “assari”
+                                        (light) — that’s what they’re famous for. Quick lunch, nothing fancy.</div>
                                 </div>
                             </div>
                         </div>
@@ -1561,6 +1925,26 @@
                                             <span>📍 Higashiyama</span>
                                         </div>
                                     </div>
+                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                </div>
+                                <div class="act-detail">
+                                    <div class="detail-label">🤖 Agent Notes</div>
+                                    <div class="detail-note agent-note">Three-Michelin-star kaiseki — book at least 2
+                                        weeks ahead. 8–12 course seasonal menu. Chef Murata Yoshihiro is famous for
+                                        modernising kaiseki while respecting tradition. Dress code: smart casual
+                                        minimum. Counter seats offer the best experience.</div>
+                                    <div class="detail-links">
+                                        <a href="https://kikunoi.jp/english/" target="_blank">🔗 Official Site</a>
+                                        <a href="https://maps.google.com/?q=Kikunoi+Kyoto" target="_blank">📍 Google
+                                            Maps</a>
+                                        <a href="https://guide.michelin.com/en/kyoto/restaurant/kikunoi"
+                                            target="_blank">⭐ Michelin Guide</a>
+                                    </div>
+                                    <div class="detail-label">📝 Your Notes</div>
+                                    <div class="detail-note user-note">Final night — splurge! Ask about sake pairing.
+                                        Reservation conf# KK-20250401-2.</div>
+                                    <div class="detail-tags"><span>Michelin ⭐⭐⭐</span><span>Kaiseki</span><span>Special
+                                            Occasion</span></div>
                                 </div>
                             </div>
                         </div>
@@ -1581,8 +1965,45 @@
                     <path d="M210,150 Q240,170 250,200 Q240,220 220,210 Q210,190 210,150Z" fill="#1a3a4a"
                         stroke="#2a5a6a" stroke-width="1" />
                 </svg>
-                <div class="map-pin"></div>
-                <div class="map-lbl">Kyoto</div>
+                <!-- Location pins for all itinerary stops -->
+                <div class="map-pin pin-culture" style="top:22%;left:38%" title="Fushimi Inari"></div>
+                <div class="map-lbl" style="top:calc(22% + 16px);left:38%">Fushimi Inari</div>
+
+                <div class="map-pin pin-food" style="top:35%;left:50%" title="Nishiki Market"></div>
+                <div class="map-lbl" style="top:calc(35% + 16px);left:50%">Nishiki Market</div>
+
+                <div class="map-pin pin-sight" style="top:38%;left:58%" title="Gion"></div>
+                <div class="map-lbl" style="top:calc(38% + 16px);left:58%">Gion</div>
+
+                <div class="map-pin pin-sight" style="top:14%;left:44%" title="Kinkaku-ji"></div>
+                <div class="map-lbl" style="top:calc(14% + 16px);left:44%">Kinkaku-ji</div>
+
+                <div class="map-pin pin-culture" style="top:28%;left:22%" title="Arashiyama"></div>
+                <div class="map-lbl" style="top:calc(28% + 16px);left:22%">Arashiyama</div>
+
+                <div class="map-pin pin-culture" style="top:42%;left:62%" title="Kiyomizu-dera"></div>
+                <div class="map-lbl" style="top:calc(42% + 16px);left:62%">Kiyomizu-dera</div>
+
+                <div class="map-pin pin-sight" style="top:50%;left:45%" title="Philosopher's Path"></div>
+                <div class="map-lbl" style="top:calc(50% + 16px);left:45%">Philosopher's Path</div>
+
+                <div class="map-pin pin-food" style="top:55%;left:52%" title="Ichiran Ramen"></div>
+                <div class="map-lbl" style="top:calc(55% + 16px);left:52%">Ichiran Ramen</div>
+
+                <div class="map-pin pin-culture" style="top:32%;left:68%" title="Kyoto Nat'l Museum"></div>
+                <div class="map-lbl" style="top:calc(32% + 16px);left:68%">Kyoto Nat'l Museum</div>
+
+                <div class="map-pin pin-culture" style="top:18%;left:30%" title="Ryoan-ji"></div>
+                <div class="map-lbl" style="top:calc(18% + 16px);left:30%">Ryoan-ji</div>
+
+                <div class="map-pin pin-sight" style="top:30%;left:48%" title="Nijo Castle"></div>
+                <div class="map-lbl" style="top:calc(30% + 16px);left:48%">Nijo Castle</div>
+
+                <div class="map-pin pin-food" style="top:62%;left:56%" title="Kikunoi"></div>
+                <div class="map-lbl" style="top:calc(62% + 16px);left:56%">Kikunoi</div>
+
+                <div class="map-pin pin-hotel" style="top:46%;left:42%" title="Hotel Kanra"></div>
+                <div class="map-lbl always" style="top:calc(46% + 16px);left:42%">🏨 Hotel Kanra</div>
             </div>
 
             <div class="sidebar-section">
@@ -1696,7 +2117,14 @@
         </div>
     </div>
 
-    <script>function toggleModal() { document.getElementById('profileModal').classList.toggle('active') }</script>
+    <script>
+        function toggleModal() { document.getElementById('profileModal').classList.toggle('active') }
+        function toggleDetail(btn) {
+            btn.classList.toggle('open');
+            const detail = btn.closest('.act-card').querySelector('.act-detail');
+            if (detail) detail.classList.toggle('open');
+        }
+    </script>
 </body>
 
 </html>

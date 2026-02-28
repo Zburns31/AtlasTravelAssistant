@@ -204,6 +204,14 @@ class Destination(BaseModel):
     iata_code: str | None = None
     coordinates: tuple[float, float] | None = None  # (lat, lon) for map
 
+class ActivityNote(BaseModel):
+    """A note attached to an activity — authored by the agent or the user."""
+    model_config = ConfigDict(frozen=True)
+    author: str  # "agent" | "user"
+    content: str
+    links: list[str] = []  # external URLs (official sites, maps, guides)
+    tags: list[str] = []   # e.g. ["UNESCO", "Photography", "Zen"]
+
 class Activity(BaseModel):
     model_config = ConfigDict(frozen=True)
     title: str
@@ -215,6 +223,7 @@ class Activity(BaseModel):
     estimated_cost_usd: float | None = None
     location: str | None = None    # human-readable place, e.g. "Fushimi Ward"
     coordinates: tuple[float, float] | None = None  # (lat, lon)
+    notes: list[ActivityNote] = []  # agent and/or user notes with links
 
 class TravelSegment(BaseModel):
     """Transit between two consecutive activities."""
