@@ -60,6 +60,8 @@ Atlas provides a conversational interface powered by a large language model. Use
 | **FR-24** | Between consecutive activities in a day, the system shall insert a `TravelSegment` showing the transit mode (walk, bus, train, taxi), estimated travel time in minutes, and a brief route description. |
 | **FR-25** | The system shall compute and display a per-day cost estimate (sum of activity costs + local transport) and a total trip budget summary (flights + lodging + daily costs). |
 | **FR-26** | Each activity shall be assigned a category (`sightseeing`, `food`, `culture`, `adventure`, `leisure`) that drives colour-coded display in the UI timeline. |
+| **FR-27** | Each activity card in the itinerary timeline shall be expandable/collapsible, revealing a detail panel that may contain agent-provided notes (with external links/sources) and/or user-authored notes. |
+| **FR-28** | The agent shall populate activity detail panels with contextual information — practical tips, official website links, map links, and source references — when generating or refining itinerary items. Users may also add, edit, or remove their own notes on any activity. |
 
 ---
 
