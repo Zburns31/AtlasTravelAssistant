@@ -11,6 +11,7 @@ dependencies = [
     # Switch models by changing ATLAS_LLM_MODEL; no extra provider packages needed.
     "langchain>=0.3",
     "langchain-openai>=0.2", # ChatOpenAI pointed at OpenRouter base_url
+    "langgraph>=0.2",        # StateGraph-based agent orchestration
     # Structured data
     "pydantic>=2.7",
     "pydantic-settings>=2.3",

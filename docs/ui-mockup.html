@@ -526,10 +526,11 @@
 
         .act-time {
             font-size: 11px;
-            font-weight: 700;
+            font-weight: 600;
             color: var(--accent);
             white-space: nowrap;
-            min-width: 70px
+            min-width: 36px;
+            flex-shrink: 0
         }
 
         .act-info {
@@ -578,19 +579,11 @@
         }
 
         .act-desc {
-            font-size: 12px;
-            color: var(--muted);
-            line-height: 1.4;
-            margin-top: 2px
+            display: none
         }
 
         .act-foot {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-top: 6px;
-            font-size: 11px;
-            color: var(--dim)
+            display: none
         }
 
         .act-foot span {
@@ -602,6 +595,86 @@
         .act-cost {
             font-weight: 600;
             color: var(--green)
+        }
+
+        .act-card {
+            cursor: pointer
+        }
+
+        .detail-desc {
+            font-size: 12px;
+            color: var(--text);
+            line-height: 1.5;
+            margin-bottom: 8px
+        }
+
+        .detail-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--dim);
+            margin-bottom: 8px
+        }
+
+        .detail-getting-here {
+            background: var(--bg);
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 11.5px;
+            color: var(--muted);
+            margin-top: 4px;
+            margin-bottom: 6px;
+            border-left: 3px solid var(--orange)
+        }
+
+        /* Top-right price badge */
+        .act-price {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--green);
+            background: var(--green-bg);
+            padding: 2px 8px;
+            border-radius: 8px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            align-self: flex-start
+        }
+
+        /* Neighbourhood / area group header */
+        .loc-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 0 4px;
+            margin-bottom: 2px;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--muted)
+        }
+
+        .loc-header .loc-icon {
+            font-size: 12px
+        }
+
+        /* Same-area separator (short walk between grouped activities) */
+        .loc-sep {
+            position: relative;
+            margin: 2px 0;
+            padding-left: 0;
+            font-size: 10.5px;
+            color: var(--dim);
+            opacity: .7
+        }
+
+        .loc-sep .sep-dot {
+            position: absolute;
+            left: -19px;
+            top: 5px;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--border);
+            margin-left: 3px
         }
 
         /* Expand/collapse toggle */
@@ -1182,13 +1255,13 @@
                         <div class="ov-card">
                             <div class="ov-top">
                                 <div class="ov-icon icon-hotel">🏨</div>
-                                <div class="ov-price">$95/night</div>
+                                <div class="ov-price">$475</div>
                             </div>
                             <h4>Hotel Kanra Kyoto</h4>
                             <div class="ov-sub">4-star · Shimogyo Ward · 8.7 rating · Free cancellation</div>
                             <div class="ov-detail">
                                 <span>📅 Apr 1 – Apr 6 (5 nights)</span>
-                                <span>💰 Total: $475</span>
+                                <span>💰 $95/night</span>
                             </div>
                         </div>
                     </div>
@@ -1206,9 +1279,9 @@
                     <div class="timeline">
                         <div class="act-item">
                             <div class="act-dot dot-culture"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">8:00 – 11:00</div>
+                                    <div class="act-time">8:00</div>
                                     <div class="act-info">
                                         <div class="act-title">Fushimi Inari Shrine <span
                                                 class="cat cat-culture">Culture</span></div>
@@ -1216,13 +1289,15 @@
                                             early to avoid crowds.</div>
                                         <div class="act-foot">
                                             <span>🕐 3 hrs</span>
-                                            <span class="act-cost">Free</span>
-                                            <span>📍 Fushimi Ward</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle open" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">Free</div>
+                                    <button class="act-toggle open">▾</button>
                                 </div>
                                 <div class="act-detail open">
+                                    <p class="detail-desc">Hike the iconic thousand vermillion torii gates. Arrive early
+                                        to avoid crowds.</p>
+                                    <div class="detail-meta"><span>🕐 3 hrs</span></div>
                                     <div class="detail-label">🤖 Agent Notes</div>
                                     <div class="detail-note agent-note">The shrine has over 10,000 torii gates winding 4
                                         km up Mt Inari. Start before 8 AM to beat tour groups. The full hike takes 2–3
@@ -1236,7 +1311,8 @@
                                             Guide</a>
                                     </div>
                                     <div class="detail-tags">
-                                        <span>Shinto</span><span>Hiking</span><span>Photography</span></div>
+                                        <span>Shinto</span><span>Hiking</span><span>Photography</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1249,9 +1325,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-food"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">11:30 – 1:00</div>
+                                    <div class="act-time">11:30</div>
                                     <div class="act-info">
                                         <div class="act-title">Nishiki Market <span class="cat cat-food">Food</span>
                                         </div>
@@ -1259,13 +1335,18 @@
                                             tamago skewers, matcha mochi, and fresh yuba.</div>
                                         <div class="act-foot">
                                             <span>🕐 1.5 hrs</span>
-                                            <span class="act-cost">~$25</span>
-                                            <span>📍 Nakagyo Ward</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$25</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Sample street food along “Kyoto’s Kitchen” — try the tamago
+                                        skewers, matcha mochi, and fresh yuba.</p>
+                                    <div class="detail-meta"><span>🕐 1.5 hrs</span></div>
+                                    <div class="detail-label">🚃 Getting Here</div>
+                                    <div class="detail-getting-here">25 min · JR Nara Line → Kyoto Stn, then Karasuma
+                                        Line — different neighbourhood from Fushimi.</div>
                                     <div class="detail-label">📝 Your Notes</div>
                                     <div class="detail-note user-note">Try the soy-milk donuts near the east entrance!
                                         Also pick up matcha kit-kats as souvenirs here.</div>
@@ -1291,9 +1372,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-sight"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">1:30 – 3:30</div>
+                                    <div class="act-time">1:30</div>
                                     <div class="act-info">
                                         <div class="act-title">Gion District stroll <span
                                                 class="cat cat-sight">Sightseeing</span></div>
@@ -1301,13 +1382,15 @@
                                             geisha/maiko sighting in late afternoon.</div>
                                         <div class="act-foot">
                                             <span>🕐 2 hrs</span>
-                                            <span class="act-cost">Free</span>
-                                            <span>📍 Higashiyama Ward</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">Free</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Wander the preserved machiya streets. Possible geisha/maiko
+                                        sighting in late afternoon.</p>
+                                    <div class="detail-meta"><span>🕐 2 hrs</span></div>
                                     <div class="detail-label">🤖 Agent Notes</div>
                                     <div class="detail-note agent-note">The most atmospheric time to visit is late
                                         afternoon (4–6 PM) when geiko and maiko head to evening engagements.
@@ -1330,9 +1413,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-food"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">6:30 – 8:00</div>
+                                    <div class="act-time">6:30</div>
                                     <div class="act-info">
                                         <div class="act-title">Dinner — Gion Kappa Restaurant <span
                                                 class="cat cat-food">Food</span></div>
@@ -1340,13 +1423,15 @@
                                             small plates and local sake.</div>
                                         <div class="act-foot">
                                             <span>🕐 1.5 hrs</span>
-                                            <span class="act-cost">~$13</span>
-                                            <span>📍 Gion</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$13</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Traditional obanzai (Kyoto home cooking) with seasonal small
+                                        plates and local sake.</p>
+                                    <div class="detail-meta"><span>🕐 1.5 hrs</span></div>
                                     <div class="detail-label">📝 Your Notes</div>
                                     <div class="detail-note user-note">Sarah recommended this place — ask for a seat at
                                         the counter. Try the tofu course!</div>
@@ -1368,9 +1453,9 @@
                     <div class="timeline">
                         <div class="act-item">
                             <div class="act-dot dot-sight"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">9:00 – 11:00</div>
+                                    <div class="act-time">9:00</div>
                                     <div class="act-info">
                                         <div class="act-title">Kinkaku-ji (Golden Pavilion) <span
                                                 class="cat cat-sight">Sightseeing</span></div>
@@ -1378,13 +1463,15 @@
                                             the mirror-like pond gardens.</div>
                                         <div class="act-foot">
                                             <span>🕐 2 hrs</span>
-                                            <span class="act-cost">~$3</span>
-                                            <span>📍 Kita Ward</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$3</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Visit the gold-leaf covered pavilion and stroll through the
+                                        mirror-like pond gardens.</p>
+                                    <div class="detail-meta"><span>🕐 2 hrs</span></div>
                                     <div class="detail-label">🤖 Agent Notes</div>
                                     <div class="detail-note agent-note">Admission includes a calligraphy talisman. Best
                                         photos from across the Mirror Pond (Kyoko-chi). Arrive at opening (9 AM) — it
@@ -1410,9 +1497,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-culture"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">12:00 – 2:30</div>
+                                    <div class="act-time">12:00</div>
                                     <div class="act-info">
                                         <div class="act-title">Arashiyama Bamboo Grove <span
                                                 class="cat cat-culture">Culture</span></div>
@@ -1420,13 +1507,18 @@
                                             Togetsukyo Bridge for views.</div>
                                         <div class="act-foot">
                                             <span>🕐 2.5 hrs</span>
-                                            <span class="act-cost">Free</span>
-                                            <span>📍 Arashiyama</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle open" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">Free</div>
+                                    <button class="act-toggle open">▾</button>
                                 </div>
                                 <div class="act-detail open">
+                                    <p class="detail-desc">Walk through the towering bamboo forest, then cross the
+                                        Togetsukyo Bridge for views.</p>
+                                    <div class="detail-meta"><span>🕐 2.5 hrs</span></div>
+                                    <div class="detail-label">🚌 Getting Here</div>
+                                    <div class="detail-getting-here">40 min · Bus #28 from Kinkaku-ji — Arashiyama is a
+                                        separate district on the west edge of Kyoto.</div>
                                     <div class="detail-label">🤖 Agent Notes</div>
                                     <div class="detail-note agent-note">The grove is most magical at dawn when light
                                         filters through the stalks. After the walk, cross Togetsukyo Bridge for mountain
@@ -1439,7 +1531,8 @@
                                             Google Maps</a>
                                     </div>
                                     <div class="detail-tags">
-                                        <span>Nature</span><span>Photography</span><span>Iconic</span></div>
+                                        <span>Nature</span><span>Photography</span><span>Iconic</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1452,9 +1545,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-food"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">3:30 – 4:15</div>
+                                    <div class="act-time">3:30</div>
                                     <div class="act-info">
                                         <div class="act-title">Afternoon tea at % Arabica Kyoto <span
                                                 class="cat cat-food">Food</span></div>
@@ -1462,13 +1555,18 @@
                                             Arashiyama.</div>
                                         <div class="act-foot">
                                             <span>🕐 45 min</span>
-                                            <span class="act-cost">~$5</span>
-                                            <span>📍 Higashiyama</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$5</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Specialty pour-over coffee in a minimal riverside café in
+                                        Arashiyama.</p>
+                                    <div class="detail-meta"><span>🕐 45 min</span></div>
+                                    <div class="detail-label">🚃 Getting Here</div>
+                                    <div class="detail-getting-here">20 min · JR Sagano Line back toward Kyoto Stn.
+                                    </div>
                                     <div class="detail-label">📝 Your Notes</div>
                                     <div class="detail-note user-note">Get the iced latte — it's their best drink. The
                                         Higashiyama shop has the best river views.</div>
@@ -1490,9 +1588,9 @@
                     <div class="timeline">
                         <div class="act-item">
                             <div class="act-dot dot-culture"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">8:30 – 11:00</div>
+                                    <div class="act-time">8:30</div>
                                     <div class="act-info">
                                         <div class="act-title">Kiyomizu-dera Temple <span
                                                 class="cat cat-culture">Culture</span></div>
@@ -1500,13 +1598,15 @@
                                             offering panoramic cherry blossom views.</div>
                                         <div class="act-foot">
                                             <span>🕐 2.5 hrs</span>
-                                            <span class="act-cost">~$3</span>
-                                            <span>📍 Higashiyama</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$3</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Explore the hillside temple with its famous wooden stage
+                                        offering panoramic cherry blossom views.</p>
+                                    <div class="detail-meta"><span>🕐 2.5 hrs</span></div>
                                     <div class="detail-label">🤖 Agent Notes</div>
                                     <div class="detail-note agent-note">The wooden stage juts 13 m over the hillside —
                                         no nails used. "Kiyomizu" means pure water; drink from the Otowa waterfall for
@@ -1534,9 +1634,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-food"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">11:30 – 12:30</div>
+                                    <div class="act-time">11:30</div>
                                     <div class="act-info">
                                         <div class="act-title">Lunch — Omen Noodles <span
                                                 class="cat cat-food">Food</span></div>
@@ -1544,13 +1644,15 @@
                                             Local favourite since 1958.</div>
                                         <div class="act-foot">
                                             <span>🕐 1 hr</span>
-                                            <span class="act-cost">~$12</span>
-                                            <span>📍 Gion</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$12</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Hand-made udon noodles with seasonal vegetable tempura. Local
+                                        favourite since 1958.</p>
+                                    <div class="detail-meta"><span>🕐 1 hr</span></div>
                                     <div class="detail-label">📝 Your Notes</div>
                                     <div class="detail-note user-note">Lunch spot from that YouTube video! Get the cold
                                         dipping udon with seasonal veg. Cash only I think.</div>
@@ -1565,9 +1667,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-culture"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">1:00 – 2:30</div>
+                                    <div class="act-time">1:00</div>
                                     <div class="act-info">
                                         <div class="act-title">Tea ceremony — Camellia Garden <span
                                                 class="cat cat-culture">Culture</span></div>
@@ -1575,13 +1677,17 @@
                                             private tatami room.</div>
                                         <div class="act-foot">
                                             <span>🕐 1.5 hrs</span>
-                                            <span class="act-cost">~$25</span>
-                                            <span>📍 Higashiyama</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$25</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Participate in a traditional matcha tea ceremony in a private
+                                        tatami room.</p>
+                                    <div class="detail-meta"><span>🕐 1.5 hrs</span></div>
+                                    <div class="detail-label">🚌 Getting Here</div>
+                                    <div class="detail-getting-here">15 min · Bus #100 north from Kiyomizu area.</div>
                                     <div class="detail-label">🤖 Agent Notes</div>
                                     <div class="detail-note agent-note">Sessions run every 90 min. English-speaking host
                                         explains each step. You'll learn to whisk matcha and enjoy a seasonal wagashi
@@ -1602,9 +1708,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-sight"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">3:00 – 4:30</div>
+                                    <div class="act-time">3:00</div>
                                     <div class="act-info">
                                         <div class="act-title">Philosopher's Path stroll <span
                                                 class="cat cat-sight">Sightseeing</span></div>
@@ -1612,13 +1718,15 @@
                                             trees in full bloom.</div>
                                         <div class="act-foot">
                                             <span>🕐 1.5 hrs</span>
-                                            <span class="act-cost">Free</span>
-                                            <span>📍 Sakyo Ward</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">Free</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Walk the scenic 2 km canal-side path lined with cherry trees
+                                        in full bloom.</p>
+                                    <div class="detail-meta"><span>🕐 1.5 hrs</span></div>
                                     <div class="detail-label">🤖 Agent Notes</div>
                                     <div class="detail-note agent-note">The 2 km path follows a canal from Ginkaku-ji to
                                         Nanzen-ji. Peak cherry blossom in early April — petals float on the water. Named
@@ -1641,9 +1749,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-food"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">6:30 – 8:00</div>
+                                    <div class="act-time">6:30</div>
                                     <div class="act-info">
                                         <div class="act-title">Dinner — Kyoto-style yakitori at Sumiyaki Gonpachi <span
                                                 class="cat cat-food">Food</span></div>
@@ -1651,13 +1759,18 @@
                                             izakaya setting.</div>
                                         <div class="act-foot">
                                             <span>🕐 1.5 hrs</span>
-                                            <span class="act-cost">~$12</span>
-                                            <span>📍 Shimogyo</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$12</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Charcoal-grilled chicken skewers with craft beer in a cozy
+                                        izakaya setting.</p>
+                                    <div class="detail-meta"><span>🕐 1.5 hrs</span></div>
+                                    <div class="detail-label">🚃 Getting Here</div>
+                                    <div class="detail-getting-here">20 min · Subway Tozai Line → Kyoto Stn area.
+                                        Different neighbourhood from Philosopher's Path.</div>
                                     <div class="detail-label">📝 Your Notes</div>
                                     <div class="detail-note user-note">Order the tsukune (chicken meatball) and the
                                         negima. 2 drinks max — early start tomorrow!</div>
@@ -1687,9 +1800,9 @@
                     <div class="timeline">
                         <div class="act-item">
                             <div class="act-dot dot-food"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">10:00 – 11:00</div>
+                                    <div class="act-time">10:00</div>
                                     <div class="act-info">
                                         <div class="act-title">Brunch — Ichiran Ramen Kyoto <span
                                                 class="cat cat-food">Food</span></div>
@@ -1697,13 +1810,15 @@
                                             richness, and garlic level.</div>
                                         <div class="act-foot">
                                             <span>🕐 1 hr</span>
-                                            <span class="act-cost">~$7</span>
-                                            <span>📍 Kawaramachi</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$7</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Rich tonkotsu broth in a solo booth — customise firmness,
+                                        richness, and garlic level.</p>
+                                    <div class="detail-meta"><span>🕐 1 hr</span></div>
                                     <div class="detail-label">📝 Your Notes</div>
                                     <div class="detail-note user-note">Order firm noodles (kata-men), extra-rich broth,
                                         max garlic. Add extra noodles (kae-dama) for ¥210 — totally worth it.</div>
@@ -1719,9 +1834,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-culture"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">11:30 – 1:30</div>
+                                    <div class="act-time">11:30</div>
                                     <div class="act-info">
                                         <div class="act-title">Kyoto National Museum <span
                                                 class="cat cat-culture">Culture</span></div>
@@ -1729,13 +1844,18 @@
                                             Perfect indoor option for a rainy day.</div>
                                         <div class="act-foot">
                                             <span>🕐 2 hrs</span>
-                                            <span class="act-cost">~$5</span>
-                                            <span>📍 Higashiyama</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$5</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Explore Japanese art, ceramics, and historical artefacts.
+                                        Perfect indoor option for a rainy day.</p>
+                                    <div class="detail-meta"><span>🕐 2 hrs</span></div>
+                                    <div class="detail-label">🚌 Getting Here</div>
+                                    <div class="detail-getting-here">12 min · Bus #206 or short taxi from Kyoto Stn
+                                        area.</div>
                                     <div class="detail-label">🤖 Agent Notes</div>
                                     <div class="detail-note agent-note">The Heisei Chishinkan wing has rotating special
                                         exhibitions — check their site for what’s on. The permanent collection covers
@@ -1757,9 +1877,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-leisure"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">2:00 – open</div>
+                                    <div class="act-time">2:00</div>
                                     <div class="act-info">
                                         <div class="act-title">Free afternoon — Gion at your own pace <span
                                                 class="cat cat-leisure">Leisure</span></div>
@@ -1767,13 +1887,15 @@
                                             house. No schedule pressure.</div>
                                         <div class="act-foot">
                                             <span>🕐 Flexible</span>
-                                            <span class="act-cost">~$30</span>
-                                            <span>📍 Gion</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$30</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Browse craft shops, visit Yasaka Shrine, or relax at a tea
+                                        house. No schedule pressure.</p>
+                                    <div class="detail-meta"><span>🕐 Flexible</span></div>
                                     <div class="detail-label">📝 Your Notes</div>
                                     <div class="detail-note user-note">Check out that vintage kimono shop on
                                         Shinmonzen-dori. Also want to try the matcha parfait at Tsujiri on Shijo-dori.
@@ -1796,9 +1918,9 @@
                     <div class="timeline">
                         <div class="act-item">
                             <div class="act-dot dot-culture"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">9:00 – 10:30</div>
+                                    <div class="act-time">9:00</div>
                                     <div class="act-info">
                                         <div class="act-title">Ryoan-ji Zen Garden <span
                                                 class="cat cat-culture">Culture</span></div>
@@ -1806,13 +1928,15 @@
                                             masterpiece of Zen minimalism.</div>
                                         <div class="act-foot">
                                             <span>🕐 1.5 hrs</span>
-                                            <span class="act-cost">~$4</span>
-                                            <span>📍 Ukyo Ward</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$4</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Contemplate the famous 15-stone rock garden — a masterpiece
+                                        of Zen minimalism.</p>
+                                    <div class="detail-meta"><span>🕐 1.5 hrs</span></div>
                                     <div class="detail-label">🤖 Agent Notes</div>
                                     <div class="detail-note agent-note">The karesansui (dry garden) has 15 stones
                                         arranged so you can never see all 15 from any single angle. Sit on the veranda
@@ -1836,9 +1960,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-sight"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">11:00 – 12:30</div>
+                                    <div class="act-time">11:00</div>
                                     <div class="act-info">
                                         <div class="act-title">Nijo Castle <span
                                                 class="cat cat-sight">Sightseeing</span></div>
@@ -1846,13 +1970,17 @@
                                             famous for "nightingale" squeaking floors.</div>
                                         <div class="act-foot">
                                             <span>🕐 1.5 hrs</span>
-                                            <span class="act-cost">~$5</span>
-                                            <span>📍 Nakagyo Ward</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$5</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Tour the UNESCO-listed Tokugawa shogunate residence, famous
+                                        for "nightingale" squeaking floors.</p>
+                                    <div class="detail-meta"><span>🕐 1.5 hrs</span></div>
+                                    <div class="detail-label">🚌 Getting Here</div>
+                                    <div class="detail-getting-here">15 min · Bus #59 from Ryoan-ji area.</div>
                                     <div class="detail-label">🤖 Agent Notes</div>
                                     <div class="detail-note agent-note">The “nightingale floors” chirp when walked on —
                                         an ingenious intruder alarm. See the Ninomaru Palace with 3,000+ painted sliding
@@ -1867,7 +1995,8 @@
                                             Listing</a>
                                     </div>
                                     <div class="detail-tags">
-                                        <span>UNESCO</span><span>History</span><span>Architecture</span></div>
+                                        <span>UNESCO</span><span>History</span><span>Architecture</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1880,9 +2009,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-food"></div>
-                            <div class="act-card">
+                            <div class="act-card" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">1:00 – 1:45</div>
+                                    <div class="act-time">1:00</div>
                                     <div class="act-info">
                                         <div class="act-title">Lunch — Kyoto ramen at Tenkaippin <span
                                                 class="cat cat-food">Food</span></div>
@@ -1890,13 +2019,18 @@
                                             1971.</div>
                                         <div class="act-foot">
                                             <span>🕐 45 min</span>
-                                            <span class="act-cost">~$8</span>
-                                            <span>📍 Karasuma area</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$8</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Thick, creamy chicken broth ramen — a Kyoto original since
+                                        1971.</p>
+                                    <div class="detail-meta"><span>🕐 45 min</span></div>
+                                    <div class="detail-label">🚃 Getting Here</div>
+                                    <div class="detail-getting-here">10 min · Subway to Karasuma Oike from Nijo Castle
+                                        area.</div>
                                     <div class="detail-label">📝 Your Notes</div>
                                     <div class="detail-note user-note">Go for “kotteri” (thick) broth, not “assari”
                                         (light) — that’s what they’re famous for. Quick lunch, nothing fancy.</div>
@@ -1911,9 +2045,9 @@
 
                         <div class="act-item">
                             <div class="act-dot dot-food"></div>
-                            <div class="act-card" style="border-color:var(--orange)">
+                            <div class="act-card" style="border-color:var(--orange)" onclick="toggleCard(this)">
                                 <div class="act-top">
-                                    <div class="act-time">6:00 – 8:30</div>
+                                    <div class="act-time">6:00</div>
                                     <div class="act-info">
                                         <div class="act-title">Farewell kaiseki — Kikunoi ⭐ <span
                                                 class="cat cat-food">Food</span></div>
@@ -1921,13 +2055,18 @@
                                             reservations required. Season's best ingredients.</div>
                                         <div class="act-foot">
                                             <span>🕐 2.5 hrs</span>
-                                            <span class="act-cost">~$30</span>
-                                            <span>📍 Higashiyama</span>
                                         </div>
                                     </div>
-                                    <button class="act-toggle" onclick="toggleDetail(this)">▾</button>
+                                    <div class="act-price">~$30</div>
+                                    <button class="act-toggle">▾</button>
                                 </div>
                                 <div class="act-detail">
+                                    <p class="detail-desc">Multi-course traditional Kyoto cuisine. Michelin-starred,
+                                        reservations required. Season's best ingredients.</p>
+                                    <div class="detail-meta"><span>🕐 2.5 hrs</span></div>
+                                    <div class="detail-label">🚕 Getting Here</div>
+                                    <div class="detail-getting-here">15 min · Taxi (~$8) from central Kyoto. Different
+                                        neighbourhood — Higashiyama district.</div>
                                     <div class="detail-label">🤖 Agent Notes</div>
                                     <div class="detail-note agent-note">Three-Michelin-star kaiseki — book at least 2
                                         weeks ahead. 8–12 course seasonal menu. Chef Murata Yoshihiro is famous for
@@ -2119,10 +2258,11 @@
 
     <script>
         function toggleModal() { document.getElementById('profileModal').classList.toggle('active') }
-        function toggleDetail(btn) {
-            btn.classList.toggle('open');
-            const detail = btn.closest('.act-card').querySelector('.act-detail');
+        function toggleCard(card) {
+            const detail = card.querySelector('.act-detail');
+            const chevron = card.querySelector('.act-toggle');
             if (detail) detail.classList.toggle('open');
+            if (chevron) chevron.classList.toggle('open');
         }
     </script>
 </body>
