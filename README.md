@@ -22,8 +22,9 @@ Describe your trip in plain language — *"Plan a 5-day trip to Kyoto in April, 
 | Layer | Technology |
 |---|---|
 | Language | Python 3.10+ |
-| LLM Orchestration | LangChain (LCEL) |
-| LLM Router | [OpenRouter](https://openrouter.ai) — single OpenAI-compatible endpoint |
+| LLM Orchestration | LangChain (LCEL) + **LangGraph** (StateGraph) |
+| LLM Router | [LiteLLM](https://docs.litellm.ai) — unified Python client for 100+ providers |
+| LLM Observability | [Langfuse](https://langfuse.com) — traces, latencies, token usage, cost tracking |
 | Structured Data | Pydantic v2 |
 | Frontend | Plotly Dash + `dash-bootstrap-components` |
 | Build | Hatchling (`pyproject.toml`) |
@@ -37,7 +38,7 @@ Describe your trip in plain language — *"Plan a 5-day trip to Kyoto in April, 
 ```
 src/atlas/
 ├── llm/
-│   └── router.py          ← get_llm() — single LLM entry point via OpenRouter
+│   └── router.py          ← get_llm() — single LLM entry point via LiteLLM
 ├── tools/
 │   ├── search.py          ← destination search
 │   ├── weather.py         ← weather lookup
@@ -47,7 +48,8 @@ src/atlas/
 │   ├── itinerary.py       ← itinerary generation logic
 │   └── destinations.py    ← destination discovery logic
 ├── agents/
-│   └── travel_agent.py    ← LangChain AgentExecutor + tool-calling agent
+│   ├── prompts.py         ← phase-specific prompts (ingest, enrich, decompose, execute, synthesise)
+│   └── travel_agent.py    ← LangGraph StateGraph — multi-phase agent pipeline
 ├── api/
 │   └── errors.py          ← typed error responses
 ├── components/
@@ -70,7 +72,8 @@ src/atlas/
 ### Prerequisites
 
 - Python 3.10+
-- An [OpenRouter API key](https://openrouter.ai/keys)
+- An API key for at least one LLM provider (OpenAI, Anthropic, Groq, etc.)
+- *(Optional)* A [Langfuse](https://langfuse.com) account for LLM observability
 
 ### Installation
 
@@ -98,15 +101,20 @@ cp .env.example .env
 ```dotenv
 # .env
 
-# Required — get your key at https://openrouter.ai/keys
-OPENROUTER_API_KEY=your_key_here
+# Set the API key for your chosen LLM provider:
+OPENAI_API_KEY=sk-...          # for openai/* models
+# ANTHROPIC_API_KEY=sk-ant-... # for anthropic/* models
+# GROQ_API_KEY=gsk_...         # for groq/* models
 
-# Model to use — any OpenRouter model string
-# Examples: openai/gpt-4o | anthropic/claude-3-5-sonnet | google/gemini-2.0-flash
+# Model in LiteLLM format: <provider>/<model>
 ATLAS_LLM_MODEL=openai/gpt-4o
 
-# External service keys
-ATLAS_WEATHER_API_KEY=your_weather_key_here
+# Optional: Langfuse observability (https://langfuse.com)
+# LANGFUSE_PUBLIC_KEY=pk-...
+# LANGFUSE_SECRET_KEY=sk-...
+# LANGFUSE_HOST=https://cloud.langfuse.com
+
+
 ```
 
 ### Run the App
@@ -121,17 +129,38 @@ Open [http://localhost:8050](http://localhost:8050) in your browser.
 
 ## Switching LLM Providers
 
-Atlas uses [OpenRouter](https://openrouter.ai) as its model routing layer. To switch models, update `ATLAS_LLM_MODEL` in your `.env` file — no code changes needed:
+Atlas uses [LiteLLM](https://docs.litellm.ai) for model routing. To switch models, update `ATLAS_LLM_MODEL` in your `.env` file and set the corresponding provider's API key — no code changes needed:
 
-| `ATLAS_LLM_MODEL` | Provider |
-|---|---|
-| `openai/gpt-4o` | OpenAI |
-| `openai/gpt-4o-mini` | OpenAI (faster, lower cost) |
-| `anthropic/claude-3-5-sonnet` | Anthropic |
-| `anthropic/claude-3-haiku` | Anthropic (fast) |
-| `google/gemini-2.0-flash` | Google |
-| `meta-llama/llama-3.3-70b-instruct` | Meta (open-weight) |
-| `mistralai/mistral-large` | Mistral |
+| `ATLAS_LLM_MODEL` | Provider | API Key Env Var |
+|---|---|---|
+| `openai/gpt-4o` | OpenAI | `OPENAI_API_KEY` |
+| `openai/gpt-4o-mini` | OpenAI (faster, lower cost) | `OPENAI_API_KEY` |
+| `anthropic/claude-3-5-sonnet` | Anthropic | `ANTHROPIC_API_KEY` |
+| `anthropic/claude-3-haiku` | Anthropic (fast) | `ANTHROPIC_API_KEY` |
+| `groq/llama-3.3-70b-versatile` | Groq (fast open models) | `GROQ_API_KEY` |
+| `gemini/gemini-2.0-flash` | Google | `GEMINI_API_KEY` |
+| `ollama/llama3` | Ollama (local) | *(none)* |
+
+---
+
+## Observability with Langfuse
+
+Atlas integrates with [Langfuse](https://langfuse.com) for LLM tracing and observability. When configured, every LLM call is automatically logged with:
+
+- Full request/response traces
+- Token usage and cost tracking
+- Latency per call and per phase
+- Model and provider metadata
+
+To enable, set these environment variables:
+
+```dotenv
+LANGFUSE_PUBLIC_KEY=pk-...
+LANGFUSE_SECRET_KEY=sk-...
+LANGFUSE_HOST=https://cloud.langfuse.com  # or your self-hosted instance
+```
+
+When these keys are not set, tracing is silently disabled — no impact on functionality.
 
 ---
 
@@ -157,11 +186,13 @@ All tests run without internet access or live API keys — external HTTP and LLM
 ## Architecture Overview
 
 ```
-[ Dash UI ] → [ API Handlers ] → [ Domain Layer ] → [ LangChain Agent ]
+[ Dash UI ] → [ API Handlers ] → [ Domain Layer ] → [ LangGraph Agent ]
                                                             ↓
                                                     [ LangChain Tools ]
                                                             ↓
-                                               [ OpenRouter ] → [ LLM Provider ]
+                                               [ LiteLLM ] → [ LLM Provider ]
+                                                    ↓
+                                               [ Langfuse ] (observability)
                                                [ Weather API, Search API ]
 ```
 

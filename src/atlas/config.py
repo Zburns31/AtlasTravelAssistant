@@ -4,8 +4,7 @@ Atlas configuration — loads all settings from environment variables / .env fil
 Usage:
     from atlas.config import settings
 
-    api_key = settings.openrouter_api_key
-    model   = settings.atlas_llm_model
+    model = settings.atlas_llm_model
 """
 
 from functools import lru_cache
@@ -30,31 +29,47 @@ class Settings(BaseSettings):
     )
 
     # ------------------------------------------------------------------
-    # LLM / OpenRouter
+    # LLM / LiteLLM
     # ------------------------------------------------------------------
-    openrouter_api_key: str = Field(
-        ...,
-        description="API key for OpenRouter (https://openrouter.ai/keys).",
-    )
     atlas_llm_model: str = Field(
         default="openai/gpt-4o",
         description=(
-            "OpenRouter model string used by get_llm(). "
-            "Examples: openai/gpt-4o, anthropic/claude-3-5-sonnet, "
-            "google/gemini-2.0-flash"
+            "LiteLLM model string used by get_llm(). "
+            "Format: <provider>/<model>.  Examples: openai/gpt-4o, "
+            "anthropic/claude-3-5-sonnet, groq/llama-3.3-70b-versatile, "
+            "gemini/gemini-2.0-flash"
         ),
     )
-    openrouter_base_url: str = Field(
-        default="https://openrouter.ai/api/v1",
-        description="Base URL for the OpenRouter OpenAI-compatible API.",
+    atlas_llm_temperature: float = Field(
+        default=0.7,
+        description="Default sampling temperature for the LLM.",
+    )
+
+    # ------------------------------------------------------------------
+    # Langfuse observability (optional)
+    # ------------------------------------------------------------------
+    langfuse_public_key: str = Field(
+        default="",
+        description="Langfuse public key. When set (with secret key), enables LLM tracing.",
+    )
+    langfuse_secret_key: str = Field(
+        default="",
+        description="Langfuse secret key. Required together with public key.",
+    )
+    langfuse_host: str = Field(
+        default="https://cloud.langfuse.com",
+        description="Langfuse API host. Override for self-hosted instances.",
     )
 
     # ------------------------------------------------------------------
     # External services
     # ------------------------------------------------------------------
-    atlas_weather_api_key: str = Field(
+    serper_api_key: str = Field(
         default="",
-        description="API key for the weather service used by the weather tool.",
+        description=(
+            "Serper.dev API key for Google Search / Places. "
+            "Get a free key at https://serper.dev (2 500 queries free)."
+        ),
     )
 
     # ------------------------------------------------------------------

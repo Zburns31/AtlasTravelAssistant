@@ -34,7 +34,7 @@ Use the pattern `ATLAS_<SERVICE>_API_KEY` and `ATLAS_<SERVICE>_BASE_URL`.
 Example:
 
 ```
-ATLAS_WEATHER_API_KEY=...
+SERPER_API_KEY=...
 ```
 
 ### Required for Every Integration

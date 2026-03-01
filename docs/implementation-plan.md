@@ -5,8 +5,9 @@
 | Layer | Technology |
 |---|---|
 | Language | Python 3.10+ |
-| LLM Orchestration | LangChain (LCEL) |
-| LLM Router | [OpenRouter](https://openrouter.ai) — single OpenAI-compatible endpoint for 300+ models |
+| LLM Orchestration | LangChain (LCEL) + **LangGraph** (StateGraph) |
+| LLM Router | [LiteLLM](https://docs.litellm.ai) — unified Python client for 100+ providers |
+| LLM Observability | [Langfuse](https://langfuse.com) — traces, latency, token & cost tracking |
 | Structured Data | Pydantic v2 |
 | Frontend | Plotly Dash |
 | Build | Hatchling (`pyproject.toml`) |
@@ -22,7 +23,7 @@ src/atlas/
 ├── __init__.py
 ├── llm/
 │   ├── __init__.py
-│   └── router.py          ← returns ChatOpenAI pointed at OpenRouter base_url
+│   └── router.py          ← get_llm() — single LLM entry point via LiteLLM + Langfuse callbacks
 ├── tools/
 │   ├── __init__.py
 │   ├── search.py          ← destination search
@@ -37,7 +38,8 @@ src/atlas/
 │   └── user_profile.py    ← profile aggregation + preference learning
 ├── agents/
 │   ├── __init__.py
-│   └── travel_agent.py    ← LangChain agent (ReAct / tool-calling)
+│   ├── prompts.py         ← phase-specific prompts (ingest, enrich, decompose, execute, synthesise)
+│   └── travel_agent.py    ← LangGraph StateGraph — multi-phase agent pipeline
 ├── api/
 │   ├── __init__.py
 │   └── errors.py          ← typed error responses
@@ -85,13 +87,16 @@ Update `pyproject.toml`:
 ```toml
 [project]
 dependencies = [
-  # LLM orchestration — OpenRouter handles all provider routing externally.
-  # Only langchain-openai is needed; ChatOpenAI is pointed at the OpenRouter base URL.
+  # LLM orchestration — LiteLLM provides a unified Python client for 100+ providers.
+  # ChatLiteLLM from langchain-litellm wraps it in a LangChain BaseChatModel.
   "langchain>=0.3",
-  "langchain-openai>=0.2",
+  "langchain-litellm>=0.6",
+  "litellm>=1.30",
+  "langgraph>=0.2",
 
   # Structured data
   "pydantic>=2.7",
+  "pydantic-settings>=2.3",
 
   # Frontend
   "dash>=2.17",
@@ -112,74 +117,87 @@ dev = [
 ]
 ```
 
-> **Why not individual `langchain-anthropic` / `langchain-google-genai` packages?**
-> OpenRouter exposes a single OpenAI-compatible REST endpoint (`https://openrouter.ai/api/v1`).
-> `ChatOpenAI` from `langchain-openai` works against it directly — no extra SDKs needed.
-> Switching from GPT-4o to Claude 3.5 Sonnet is a one-line env var change, not a code change.
+> **Why LiteLLM instead of individual `langchain-anthropic` / `langchain-google-genai` packages?**
+> LiteLLM is a client-side Python library that provides a unified interface across 100+ providers.
+> No proxy, no extra API key — set the provider's native API key (e.g. `OPENAI_API_KEY`) and use
+> the model string `<provider>/<model>`. Switching from GPT-4o to Claude 3.5 Sonnet is a one-line
+> env var change, not a code change. LiteLLM also has native callback support for Langfuse
+> observability.
 
 ### 1.2 Environment Variables
 
 Create a `.env.example` (never commit `.env`):
 
 ```
-# OpenRouter — get your key at https://openrouter.ai/keys
-OPENROUTER_API_KEY=
+# LLM Provider — set the API key for your chosen provider:
+OPENAI_API_KEY=               # for openai/* models
+# ANTHROPIC_API_KEY=          # for anthropic/* models
+# GROQ_API_KEY=               # for groq/* models
 
-# Model string in OpenRouter format: <provider>/<model-name>
+# Model string in LiteLLM format: <provider>/<model-name>
 # Examples:
 #   openai/gpt-4o
 #   anthropic/claude-3-5-sonnet
-#   google/gemini-2.0-flash
-#   meta-llama/llama-3.3-70b-instruct
+#   groq/llama-3.3-70b-versatile
+#   gemini/gemini-2.0-flash
+#   ollama/llama3 (local)
 ATLAS_LLM_MODEL=openai/gpt-4o
+ATLAS_LLM_TEMPERATURE=0.7
 
-# External service keys (travel data)
-ATLAS_WEATHER_API_KEY=
+# Langfuse observability (https://langfuse.com) — optional
+# LANGFUSE_PUBLIC_KEY=
+# LANGFUSE_SECRET_KEY=
+# LANGFUSE_HOST=https://cloud.langfuse.com
+
+# Serper.dev — Google Search / Places (https://serper.dev)
+# SERPER_API_KEY=
 ```
 
 ---
 
 ## Phase 2 — LLM Router Layer (`src/atlas/llm/`)
 
-Instead of writing and maintaining individual provider adapters, we use **[OpenRouter](https://openrouter.ai)** as the routing layer. OpenRouter exposes 300+ models from every major provider (OpenAI, Anthropic, Google, Meta, Mistral, etc.) behind a single OpenAI-compatible REST endpoint. This means:
+Instead of writing and maintaining individual provider adapters, we use **[LiteLLM](https://docs.litellm.ai)** as the routing layer. LiteLLM is a client-side Python library that provides a unified interface to 100+ LLM providers (OpenAI, Anthropic, Google, Groq, Ollama, etc.). This means:
 
-- **One package** — `langchain-openai` only. No `langchain-anthropic`, `langchain-google-genai`, etc.
-- **One API key** — `OPENROUTER_API_KEY` replaces all individual provider keys.
+- **One package** — `langchain-litellm` only. No `langchain-anthropic`, `langchain-google-genai`, etc.
+- **Provider-native API keys** — set `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc. directly. No extra proxy or routing key.
 - **Zero code change to switch models** — change `ATLAS_LLM_MODEL` from `openai/gpt-4o` to `anthropic/claude-3-5-sonnet` and restart.
+- **Built-in observability** — native Langfuse callbacks for tracing, token usage, and cost tracking.
 
 ### `router.py`
 
 ```python
-import os
-from langchain_openai import ChatOpenAI
+from functools import lru_cache
+import litellm
+from langchain_litellm import ChatLiteLLM
 from langchain_core.language_models import BaseChatModel
+from atlas.config import settings
 
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
+def _configure_langfuse() -> None:
+    """Enable Langfuse tracing when credentials are present."""
+    if settings.langfuse_public_key and settings.langfuse_secret_key:
+        litellm.success_callback = ["langfuse"]
+        litellm.failure_callback = ["langfuse"]
+
+
+@lru_cache(maxsize=1)
 def get_llm() -> BaseChatModel:
     """
-    Return a LangChain BaseChatModel backed by OpenRouter.
+    Return a LangChain BaseChatModel backed by LiteLLM.
     Change ATLAS_LLM_MODEL to switch providers — no code changes required.
 
     Model string format: "<provider>/<model>"
-    Examples: openai/gpt-4o, anthropic/claude-3-5-sonnet, google/gemini-2.0-flash
+    Examples: openai/gpt-4o, anthropic/claude-3-5-sonnet, groq/llama-3.3-70b-versatile
     """
-    api_key = os.environ["OPENROUTER_API_KEY"]
-    model = os.getenv("ATLAS_LLM_MODEL", "openai/gpt-4o")
-
-    return ChatOpenAI(
-        model=model,
-        api_key=api_key,
-        base_url=OPENROUTER_BASE_URL,
-        # Optional: identify your app in OpenRouter's dashboard
-        default_headers={
-            "HTTP-Referer": "https://github.com/atlas-travel-assistant",
-            "X-Title": "Atlas Travel Assistant",
-        },
+    _configure_langfuse()
+    return ChatLiteLLM(
+        model=settings.atlas_llm_model,
+        temperature=settings.atlas_llm_temperature,
     )
 ```
 
-> **Need local / offline models?** Set `ATLAS_LLM_MODEL=ollama/<model>` — OpenRouter supports routing to local Ollama instances via its [self-hosted gateway](https://openrouter.ai/docs#local-models), or swap `router.py` to use `ChatOllama` directly for that case only.
+> **Need local / offline models?** Set `ATLAS_LLM_MODEL=ollama/llama3` — LiteLLM routes to a local Ollama instance automatically. No code changes needed.
 
 ---
 
@@ -312,20 +330,8 @@ Tools are plain Python functions wrapped with LangChain's `@tool` decorator. The
 
 ```python
 # src/atlas/tools/weather.py
-import os, httpx
-from langchain_core.tools import tool
-
-@tool
-def get_weather(city: str, date: str) -> dict:
-    """
-    Get weather forecast for a city on a given date (YYYY-MM-DD).
-    Returns temperature range, conditions, and precipitation chance.
-    """
-    api_key = os.getenv("ATLAS_WEATHER_API_KEY")
-    if not api_key:
-        raise EnvironmentError("ATLAS_WEATHER_API_KEY is not set")
-    # ... httpx call to weather API ...
-    return {"city": city, "date": date, "temp_high": 24, "conditions": "sunny"}
+# Uses Open-Meteo Archive API (free, no API key) + Nominatim geocoding.
+# See src/atlas/tools/weather.py for the full implementation.
 ```
 
 ### User Profile Tool
@@ -378,7 +384,7 @@ ALL_TOOLS = [
 
 ## Phase 5 — Travel Agent (`src/atlas/agents/travel_agent.py`)
 
-Uses LangChain's **LCEL** (LangChain Expression Language) with a tool-calling agent. The agent receives the LLM from the router, so swapping providers requires zero changes here.
+Uses **LangGraph** to implement a multi-phase agent pipeline: ingest → enrich → decompose → execute (with tool loop) → synthesise. The agent receives the LLM from the router, so swapping providers requires zero changes here.
 
 ```python
 from langchain_core.language_models import BaseChatModel
@@ -557,7 +563,7 @@ def sample_itinerary():
 | `domain/*.py` | Unit test with mock LLM; test validator logic |
 | `domain/user_profile.py` | Test preference aggregation across multiple itineraries; test merge idempotency |
 | `domain/itinerary.py` | Test partial itinerary completion preserves user-supplied days; test gap detection logic |
-| `agents/travel_agent.py` | Mock `AgentExecutor.invoke`; test prompt construction includes user profile placeholder |
+| `agents/travel_agent.py` | Mock LLM invoke; test LangGraph StateGraph construction and phase routing |
 | `ui/callbacks.py` | Use Dash's `dash.testing` or mock the agent |
 
 ---
@@ -570,7 +576,7 @@ Work through these phases in order — each builds on the previous:
 |---|---|---|
 | 1 | Project setup | `pyproject.toml` deps, `.env.example`, virtual env |
 | 2 | Domain models | `src/atlas/domain/models.py` — all Pydantic models incl. `UserProfile` |
-| 3 | LLM Router | `src/atlas/llm/router.py` — single `ChatOpenAI` → OpenRouter |
+| 3 | LLM Router | `src/atlas/llm/router.py` — `ChatLiteLLM` via LiteLLM + Langfuse callbacks |
 | 4 | Tools | `src/atlas/tools/*.py` — `@tool` functions incl. `user_profile.py` |
 | 5 | Agent | `src/atlas/agents/travel_agent.py` — LCEL agent with profile-aware prompt |
 | 6 | Domain logic | `src/atlas/domain/itinerary.py` — orchestration + partial itinerary completion |

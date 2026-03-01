@@ -82,7 +82,7 @@ Atlas provides a conversational interface powered by a large language model. Use
 | **NFR-11** | Maintainability | Each module shall have a single, well-defined responsibility. The UI layer shall not contain LLM calls; the domain layer shall not contain UI rendering logic. |
 | **NFR-12** | Testability | All LLM interactions shall be mockable via `MagicMock(spec=BaseChatModel)` at the `get_llm()` boundary. |
 | **NFR-13** | Testability | The full test suite shall pass with no internet access and no live API keys. |
-| **NFR-14** | Observability | The LangChain `AgentExecutor` shall run with `verbose=True` by default in development, logging all tool calls and intermediate steps. |
+| **NFR-14** | Observability | The LangGraph agent shall log all tool calls and intermediate steps in development. When Langfuse is configured, all LLM calls are automatically traced with token usage, latency, and cost. |
 | **NFR-15** | Observability | All exceptions in tool functions shall be caught, logged with context (tool name, inputs), and re-raised as typed domain exceptions. |
 | **NFR-16** | Data Integrity | The `UserProfile` shall be stored as a single JSON file (`~/.atlas/user_profile.json`). Writes shall be atomic (write-then-rename) to prevent corruption on crash. |
 | **NFR-17** | Privacy | The `UserProfile` is stored locally only. No user preference data shall be transmitted to any service other than the active LLM (via the prompt context). |
@@ -116,8 +116,8 @@ Atlas provides a conversational interface powered by a large language model. Use
                                │ invokes
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│               LangChain Agent (src/atlas/agents/)               │
-│   AgentExecutor + create_tool_calling_agent + chat history      │
+│            LangGraph Agent (src/atlas/agents/)                  │
+│   StateGraph: ingest → enrich → decompose → execute → synth    │
 └──────────────────────────────┬──────────────────────────────────┘
                                │ calls
           ┌────────────────────┼───────────────────┐
@@ -130,13 +130,14 @@ Atlas provides a conversational interface powered by a large language model. Use
          ▼                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │              LLM Router  (src/atlas/llm/router.py)              │
-│   ChatOpenAI → base_url: https://openrouter.ai/api/v1           │
+│   ChatLiteLLM → LiteLLM unified interface for 100+ providers    │
+│   Langfuse callbacks for tracing / observability                │
 └──────────────────────────────┬──────────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                         OpenRouter                              │
-│   Routes to: OpenAI │ Anthropic │ Google │ Meta │ Mistral …     │
+│                    LLM Provider (via LiteLLM)                   │
+│   Routes to: OpenAI │ Anthropic │ Google │ Groq │ Ollama …      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -171,16 +172,16 @@ The layout is split into three panels:
 |---|---|
 | **Responsibility** | Business rules (date validation, preference matching), itinerary orchestration, structured output parsing, user profile management, partial itinerary merging |
 | **Technology** | Python, Pydantic v2 |
-| **Key interface** | Functions accept domain models and an optional injected `AgentExecutor`; return typed domain objects |
+| **Key interface** | Functions accept domain models and an optional injected `CompiledGraph`; return typed domain objects |
 | **Must NOT contain** | Provider SDK imports, UI logic, raw string parsing of LLM output |
 
 #### Agent — `src/atlas/agents/travel_agent.py`
 
 | Attribute | Detail |
 |---|---|
-| **Responsibility** | Wire the LLM from the router to the tool registry; manage the ReAct loop; pass chat history |
-| **Technology** | LangChain `create_tool_calling_agent` + `AgentExecutor`, `ChatPromptTemplate` |
-| **Key interface** | `build_travel_agent(llm: BaseChatModel) → AgentExecutor`; invoked with `{"input": ..., "chat_history": [...], "user_profile": ...}` |
+| **Responsibility** | Wire the LLM from the router to the tool registry; manage the multi-phase LangGraph pipeline; pass chat history |
+| **Technology** | LangGraph `StateGraph` with 5 phases: ingest → enrich → decompose → execute (tool loop) → synthesise |
+| **Key interface** | `build_travel_graph(llm: BaseChatModel) → CompiledGraph`; invoked with `{"messages": [...]}` |
 | **Must NOT contain** | Provider-specific imports, UI logic, direct `httpx` calls |
 
 #### Tools — `src/atlas/tools/`
@@ -196,8 +197,8 @@ The layout is split into three panels:
 
 | Attribute | Detail |
 |---|---|
-| **Responsibility** | Return a configured `BaseChatModel` for the active provider; read config from env vars |
-| **Technology** | `langchain-openai`, OpenRouter API |
+| **Responsibility** | Return a configured `BaseChatModel` for the active provider; read config from env vars; configure Langfuse observability callbacks |
+| **Technology** | `langchain-litellm` (`ChatLiteLLM`), LiteLLM native callbacks |
 | **Key interface** | `get_llm() → BaseChatModel` — the single LLM entry point for the entire codebase |
 | **Must NOT contain** | Business logic, tool definitions, UI logic, hardcoded model names or API keys |
 
@@ -227,9 +228,9 @@ The layout is split into three panels:
 3. src/atlas/domain/itinerary.py
    → If a partial itinerary is provided, identifies missing days and marks them for generation
    → Injects user_profile summary into agent context
-   → Invokes AgentExecutor.invoke({"input": ..., "chat_history": [...], "user_profile": ...})
+   → Invokes graph.invoke({"messages": [...]})
 
-5. src/atlas/agents/travel_agent.py (AgentExecutor loop)
+5. src/atlas/agents/travel_agent.py (LangGraph StateGraph phases)
    → LLM decides to call get_weather("Kyoto", "2026-04-01")
    → Tool executes httpx call → returns forecast dict
    → LLM decides to call search_destinations("Kyoto temples food")
@@ -260,32 +261,33 @@ The layout is split into three panels:
 
 ### 4.4 LLM Router Design
 
-Atlas uses [OpenRouter](https://openrouter.ai) as its model routing layer. A single `ChatOpenAI` instance is pointed at the OpenRouter base URL, which proxies requests to 300+ models across all major providers.
+Atlas uses [LiteLLM](https://docs.litellm.ai) as its model routing layer. A single `ChatLiteLLM` instance delegates to any supported provider based on the model string format `<provider>/<model>`. Langfuse callbacks are automatically configured when credentials are present.
 
 **Configuration:**
 
 ```python
 # src/atlas/llm/router.py
-ChatOpenAI(
-    model=os.getenv("ATLAS_LLM_MODEL", "openai/gpt-4o"),
-    api_key=os.environ["OPENROUTER_API_KEY"],
-    base_url="https://openrouter.ai/api/v1",
+from langchain_litellm import ChatLiteLLM
+
+ChatLiteLLM(
+    model=settings.atlas_llm_model,          # e.g. "openai/gpt-4o"
+    temperature=settings.atlas_llm_temperature,
 )
 ```
 
 **Switching models — example values for `ATLAS_LLM_MODEL`:**
 
-| Model String | Provider | Notes |
-|---|---|---|
-| `openai/gpt-4o` | OpenAI | Default; strong reasoning and tool use |
-| `openai/gpt-4o-mini` | OpenAI | Faster, lower cost |
-| `anthropic/claude-3-5-sonnet` | Anthropic | Strong instruction following |
-| `anthropic/claude-3-haiku` | Anthropic | Fast, low cost |
-| `google/gemini-2.0-flash` | Google | Fast multimodal model |
-| `meta-llama/llama-3.3-70b-instruct` | Meta | Open-weight, strong general capability |
-| `mistralai/mistral-large` | Mistral | European provider, strong reasoning |
+| Model String | Provider | API Key Env Var | Notes |
+|---|---|---|---|
+| `openai/gpt-4o` | OpenAI | `OPENAI_API_KEY` | Default; strong reasoning and tool use |
+| `openai/gpt-4o-mini` | OpenAI | `OPENAI_API_KEY` | Faster, lower cost |
+| `anthropic/claude-3-5-sonnet` | Anthropic | `ANTHROPIC_API_KEY` | Strong instruction following |
+| `anthropic/claude-3-haiku` | Anthropic | `ANTHROPIC_API_KEY` | Fast, low cost |
+| `groq/llama-3.3-70b-versatile` | Groq | `GROQ_API_KEY` | Fast inference on open models |
+| `gemini/gemini-2.0-flash` | Google | `GEMINI_API_KEY` | Fast multimodal model |
+| `ollama/llama3` | Ollama (local) | *(none)* | Local inference, no API key needed |
 
-No code changes, no additional packages, and no extra API keys are needed to switch between any of these. Only `OPENROUTER_API_KEY` is required.
+No code changes and no additional packages are needed to switch between any of these. Set the provider's API key as an environment variable and update `ATLAS_LLM_MODEL`.
 
 ---
 
@@ -293,9 +295,11 @@ No code changes, no additional packages, and no extra API keys are needed to swi
 
 | Service | Purpose | Auth Env Var | Failure Behaviour |
 |---|---|---|---|
-| **OpenRouter** | LLM inference for all model providers | `OPENROUTER_API_KEY` | Agent raises `EnvironmentError` on startup if key is missing; HTTP errors returned as typed `ErrorResponse` |
-| **Weather API** | Fetch forecast data (temperature, conditions, precipitation) for destination and dates | `ATLAS_WEATHER_API_KEY` | Tool catches HTTP error, returns `{"error": "weather_unavailable"}`; agent notes unavailability in itinerary output |
-| **Search / Destination API** | Retrieve destination highlights, coordinates, travel tips | `ATLAS_SEARCH_API_KEY` *(TBD)* | Tool returns empty result set; agent generates itinerary from internal knowledge only |
+| **LiteLLM** (client library) | Unified LLM interface — routes to OpenAI, Anthropic, Groq, Ollama, etc. | Provider-specific: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, etc. | `get_llm()` returns a `ChatLiteLLM` that raises provider-specific errors; HTTP errors returned as typed `ErrorResponse` |
+| **Langfuse** | LLM observability — traces, token usage, cost, latency | `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` | When keys are absent, tracing is silently disabled — no impact on functionality |
+| **Open-Meteo Archive API** | Fetch historical temperature data (hourly) for destination and dates — free, no API key | *(none)* | Tool catches HTTP error, returns `{"error": "weather_unavailable"}`; agent notes unavailability in itinerary output |
+| **Nominatim (OpenStreetMap)** | Geocode city names to lat/lon coordinates for weather lookups | *(none)* | Tool catches HTTP error and returns geocoding failure message |
+| **Serper.dev (Google Search)** | Web search (`search_web`) and places/POI lookup (`search_places`) — ratings, addresses, coordinates | `SERPER_API_KEY` | Tool returns `{"error": ...}` with descriptive message; agent continues with internal knowledge |
 
 ---
 
@@ -324,9 +328,9 @@ No code changes, no additional packages, and no extra API keys are needed to swi
 ## 6. Security Considerations
 
 ### Secret Management
-- All API keys (`OPENROUTER_API_KEY`, `ATLAS_WEATHER_API_KEY`) are read from environment variables via `os.environ` / `os.getenv`
+- All API keys (provider keys like `OPENAI_API_KEY`, `SERPER_API_KEY`, `LANGFUSE_SECRET_KEY`) are read from environment variables via `pydantic-settings`
 - `.env` is listed in `.gitignore` and never committed. Only `.env.example` (no real values) is committed
-- If `OPENROUTER_API_KEY` is missing, the application raises an explicit `EnvironmentError` at startup with a clear message
+- LiteLLM auto-detects provider API keys from standard environment variable names — no additional configuration needed
 
 ### Input Validation
 - All user inputs entering the domain layer are validated by Pydantic models at the API handler boundary
@@ -339,8 +343,8 @@ No code changes, no additional packages, and no extra API keys are needed to swi
 
 ### API Key Exposure Risks
 - The Dash app runs server-side — keys are never exposed to the browser
-- `OPENROUTER_API_KEY` is used only in `router.py`; it is never serialised to `dcc.Store` or included in any HTTP response
-- Rate limiting is delegated to OpenRouter's per-key limits; no custom rate limiter is implemented in v1 `[TBD for v2]`
+- Provider API keys are used only in `router.py` (via LiteLLM); they are never serialised to `dcc.Store` or included in any HTTP response
+- Rate limiting is delegated to each LLM provider's per-key limits; no custom rate limiter is implemented in v1 `[TBD for v2]`
 
 ---
 
@@ -351,7 +355,7 @@ No code changes, no additional packages, and no extra API keys are needed to swi
 | Boundary | Mock Approach |
 |---|---|
 | LLM (`get_llm()`) | `MagicMock(spec=BaseChatModel)`; `llm.invoke.return_value.content = "..."` |
-| Agent (`AgentExecutor.invoke`) | `mocker.patch.object(executor, "invoke", return_value={...})` |
+| Agent (`graph.invoke`) | `mocker.patch.object(graph, "invoke", return_value={...})` |
 | External HTTP (`httpx`) | `mocker.patch("httpx.get")` returning a `MockResponse` with preset JSON |
 
 ### Per-Layer Coverage
@@ -361,8 +365,8 @@ No code changes, no additional packages, and no extra API keys are needed to swi
 | LLM Router | `llm/router.py` | Assert `get_llm()` returns `BaseChatModel`; test missing key raises `EnvironmentError`; mock env vars with `monkeypatch` |
 | Tools | `tools/weather.py`, `tools/search.py`, `tools/itinerary.py`, `tools/user_profile.py` | Mock `httpx.get/post` and file I/O; test success response, 400, 500, timeout, missing API key, profile read/write, and profile-not-found scenarios |
 | Domain Models | `domain/models.py` | Unit test field validators (`end_date > start_date`); test frozen model mutation raises `TypeError` |
-| Domain Logic | `domain/itinerary.py`, `domain/destinations.py`, `domain/user_profile.py` | Inject mock `AgentExecutor`; assert correct domain objects returned; test error propagation; test partial itinerary merging preserves user-supplied days; test profile update logic accumulates preferences correctly |
-| Agent | `agents/travel_agent.py` | Assert `build_travel_agent` returns `AgentExecutor`; verify prompt includes system message and `MessagesPlaceholder` nodes |
+| Domain Logic | `domain/itinerary.py`, `domain/destinations.py`, `domain/user_profile.py` | Inject mock `CompiledGraph`; assert correct domain objects returned; test error propagation; test partial itinerary merging preserves user-supplied days; test profile update logic accumulates preferences correctly |
+| Agent | `agents/travel_agent.py` | Assert `build_travel_graph` returns a `CompiledGraph`; verify phase routing and tool integration |
 | API Handlers | `api/` | Test valid request → correct domain call; test invalid input → `ErrorResponse`; mock domain layer |
 | UI Callbacks | `ui/callbacks.py` | Mock the agent; assert store state updates correctly; use `dash.testing` for integration tests |
 
@@ -405,9 +409,9 @@ def sample_itinerary():
 
 | Assumption | Rationale |
 |---|---|
-| OpenRouter is available | v1 depends entirely on OpenRouter uptime; no local fallback is implemented |
+| At least one LLM provider API key is available | v1 requires a valid API key for the chosen provider (e.g. `OPENAI_API_KEY`); no built-in fallback between providers |
 | Single concurrent user | The Dash app runs with a single worker; no concurrency or request queuing is designed for |
-| The active model supports tool calling | `create_tool_calling_agent` requires a model with native function/tool call support; OpenRouter model strings without this capability will fail at runtime `[TBD: add model capability check]` |
+| The active model supports tool calling | LangChain tool-calling requires a model with native function/tool call support; models without this capability will fail at runtime `[TBD: add model capability check]` |
 | Destination coordinates can be resolved | The map panel requires `coordinates` on `Destination`; if the LLM does not populate this field, the map renders without a pin |
 
 ---
@@ -421,7 +425,7 @@ def sample_itinerary():
 | **OQ-03** | How is itinerary persistence implemented? (local JSON file, SQLite, cloud DB?) | Medium | For v1 local deployment: JSON files in a `~/.atlas/itineraries/` directory. `[TBD for hosted deployment]` |
 | **OQ-04** | Does the chosen model reliably produce valid `Itinerary` JSON? | High | Use `llm.with_structured_output(Itinerary)` where supported. Add a fallback parser with retry logic for models that don't support structured output natively. |
 | **OQ-05** | How should chat history be bounded to avoid exceeding context windows? | Medium | Implement a sliding window (last N messages) or summarisation step before passing `chat_history` to the agent. |
-| **OQ-06** | Should the app support streaming LLM responses? | Low | Plotly Dash supports `Server-Sent Events` for streaming. Not required for v1, but the `ChatOpenAI(streaming=True)` path is available if needed. |
+| **OQ-06** | Should the app support streaming LLM responses? | Low | Plotly Dash supports `Server-Sent Events` for streaming. Not required for v1, but LiteLLM supports streaming natively if needed. |
 | **OQ-07** | What happens when the LLM cannot infer coordinates for a destination? | Low | Default to `coordinates=None`; map panel renders without a pin and shows a "Location unavailable" message. |
 | **OQ-08** | Is there a risk of prompt injection via user input? | Medium | Sanitise user inputs at the API boundary; do not allow user-supplied text to modify the system prompt. Monitor for jailbreak patterns in v2. |
 | **OQ-09** | How should conflicting preferences between `UserProfile` and an explicit request be resolved? | Medium | Explicit request preferences always override profile defaults. The agent prompt should state: "User's current request takes priority over historical profile data." |
