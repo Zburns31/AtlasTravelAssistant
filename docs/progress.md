@@ -1,5 +1,102 @@
 # Atlas — Progress Log
 
+## 2026-03-06 — Separate Save (JSON) and Export (Markdown) Tools
+
+### What changed
+
+Refactored the itinerary tools into two distinct concerns:
+
+| Tool | Format | Location | Purpose |
+|---|---|---|---|
+| `save_itinerary` | JSON | `~/.atlas/itineraries/<slug>.json` | Internal persistence — agent saves/loads itineraries for future sessions |
+| `export_itinerary_markdown` | Markdown | `~/Downloads/<slug>.md` | User-facing export — human-readable trip plan for sharing/printing |
+
+### Why the split
+
+- **Save** is for the system — JSON is easy to parse, round-trips perfectly through Pydantic, and will be used by the upcoming `load_itinerary` tool.
+- **Export** is for the user — Markdown renders beautifully in GitHub, Obsidian, VS Code, etc. and belongs in Downloads where the user expects downloadable files.
+
+### Architecture
+
+- `save_itinerary_to_disk()` — writes JSON only, no Markdown sidecar
+- `export_markdown_to_disk()` — writes Markdown only, defaults to `~/Downloads`
+- `itinerary_to_markdown()` — pure renderer, unchanged, shared by export and UI previews
+- Both use atomic write-then-rename for crash safety
+- `DOWNLOADS_DIR` constant added alongside `ITINERARIES_DIR`
+
+### TODO: `load_itinerary`
+
+Still marked as a future task. Planned features:
+- Load from JSON file and reconstruct `Itinerary` model
+- List available saved itineraries
+- Search itineraries by destination or date range
+
+### Files modified
+
+```
+src/atlas/tools/itinerary.py          — split save/export, added export_markdown_to_disk + export_itinerary_markdown tool
+src/atlas/tools/__init__.py           — registered export_itinerary_markdown in ALL_TOOLS
+tests/tools/test_itinerary.py         — 45 tests (up from 33): added export tests, updated save tests to assert JSON-only
+docs/progress.md                      — this entry
+```
+
+### Tests
+
+116/116 passing (45 itinerary + 71 existing).
+
+---
+
+## 2026-03-06 — Save Itinerary Tool (Markdown + JSON)
+
+### What changed
+
+Added the `save_itinerary` LangChain tool that persists itineraries to `~/.atlas/itineraries/` in two formats:
+
+| Format | Purpose |
+|---|---|
+| **Markdown** (`.md`) | Human-readable trip plan — flights, accommodation, day-by-day activities with time blocks, travel segments, activity notes/links, and a budget summary table. Renders cleanly in GitHub, Obsidian, VS Code, etc. |
+| **JSON** (`.json`) | Raw `Itinerary.model_dump_json()` sidecar for future programmatic loading |
+
+### Markdown output includes
+
+- Trip header (destination, dates, traveler count, pace, budget, interests)
+- ✈️ Flights section with airline, route, times, cabin class, and cost
+- 🏨 Accommodation with star rating, nightly rate, and total cost
+- 📅 Day-by-day activities with time blocks, category emoji, cost, location
+- Travel segments between activities (mode, duration, route description)
+- Activity notes (💡 agent tips with links, 📝 user notes)
+- 💰 Budget summary table (flights + accommodation + daily costs)
+- Generated-by footer with timestamp
+
+### Architecture
+
+- **Atomic writes** — uses write-then-rename pattern to prevent corruption on crash (aligns with NFR-16)
+- **`itinerary_to_markdown()`** — pure function, exported for direct use in UI previews or tests
+- **`save_itinerary_to_disk()`** — lower-level function accepting a directory override (used in tests)
+- **`save_itinerary`** — `@tool`-decorated wrapper for the LangGraph agent
+
+### TODO: `load_itinerary`
+
+Marked as a future task in the module. Planned features:
+- Load from JSON sidecar and reconstruct `Itinerary` model
+- List available saved itineraries
+- Search itineraries by destination or date range
+
+### Files created/modified
+
+```
+src/atlas/tools/itinerary.py          — save_itinerary tool + Markdown renderer
+src/atlas/tools/__init__.py           — registered save_itinerary in ALL_TOOLS
+tests/tools/test_itinerary.py         — 33 tests (helpers, markdown, disk I/O, @tool wrapper)
+docs/progress.md                      — this entry
+```
+
+### Tests
+
+104/104 passing (33 new + 71 existing).
+
+---
+
 ## 2026-03-06 — Documentation Update + Langfuse Observability
 
 ### What changed
