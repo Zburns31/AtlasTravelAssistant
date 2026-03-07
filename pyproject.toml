@@ -44,4 +44,5 @@ packages = ["src/atlas"]
 dev = [
     "grandalf>=0.8",
     "jupyterlab>=4.5.5",
+    "nbstripout>=0.9.1",
 ]
