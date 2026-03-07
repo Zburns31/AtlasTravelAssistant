@@ -62,4 +62,6 @@ def get_llm() -> BaseChatModel:
     return ChatLiteLLM(
         model=cfg.atlas_llm_model,
         temperature=cfg.atlas_llm_temperature,
+        max_retries=cfg.atlas_llm_num_retries,
+        request_timeout=cfg.atlas_llm_request_timeout,
     )

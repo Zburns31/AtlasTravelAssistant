@@ -44,6 +44,17 @@ class Settings(BaseSettings):
         default=0.7,
         description="Default sampling temperature for the LLM.",
     )
+    atlas_llm_num_retries: int = Field(
+        default=3,
+        description=(
+            "Number of retries on transient LLM errors (429, 500). "
+            "LiteLLM uses exponential backoff between retries."
+        ),
+    )
+    atlas_llm_request_timeout: float = Field(
+        default=30.0,
+        description="Per-request timeout in seconds for LLM calls.",
+    )
 
     # ------------------------------------------------------------------
     # Langfuse observability (optional)

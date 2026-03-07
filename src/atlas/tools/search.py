@@ -27,6 +27,16 @@ SERPER_PLACES_URL = "https://google.serper.dev/places"
 
 # ── Internal helpers ─────────────────────────────────────────────────────────
 
+# In-process cache keyed on (url, frozen_payload) to avoid duplicate Serper
+# calls within the same agent run.  Cleared between runs if needed via
+# ``clear_serper_cache()``.
+_serper_cache: dict[tuple, dict] = {}
+
+
+def clear_serper_cache() -> None:
+    """Reset the in-process Serper response cache."""
+    _serper_cache.clear()
+
 
 def _get_api_key() -> str:
     """Return the Serper API key or raise if not configured."""
@@ -40,7 +50,15 @@ def _get_api_key() -> str:
 
 
 def _serper_request(url: str, payload: dict) -> dict:
-    """Make an authenticated POST request to Serper and return JSON."""
+    """Make an authenticated POST request to Serper and return JSON.
+
+    Results are cached in-process so the same query within a single
+    agent run does not hit the API twice.
+    """
+    cache_key = (url, tuple(sorted(payload.items())))
+    if cache_key in _serper_cache:
+        return _serper_cache[cache_key]
+
     resp = httpx.post(
         url,
         json=payload,
@@ -51,7 +69,9 @@ def _serper_request(url: str, payload: dict) -> dict:
         timeout=10,
     )
     resp.raise_for_status()
-    return resp.json()
+    result = resp.json()
+    _serper_cache[cache_key] = result
+    return result
 
 
 # ── LangChain tools ─────────────────────────────────────────────────────────

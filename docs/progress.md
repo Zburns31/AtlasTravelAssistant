@@ -1,5 +1,48 @@
 # Atlas — Progress Log
 
+## 2026-03-07 — Rate-Limit Resilience + Provider Switch
+
+### What changed
+
+Five changes to eliminate Gemini free-tier rate-limit failures during the execute (tool-calling) phase.
+
+| Change | File(s) | Impact |
+|---|---|---|
+| **Cap ReAct loop** | `travel_agent.py` | `recursion_limit=12` at invoke time — hard-caps execute↔tools loop at ~5 iterations |
+| **Retry + backoff** | `router.py`, `config.py` | `max_retries=3`, `request_timeout=30` on `ChatLiteLLM` — survives transient 429s |
+| **Switch to Groq** | `.env` | `ATLAS_LLM_MODEL=groq/llama-3.3-70b-versatile` — 30 RPM free tier (3× Gemini) |
+| **Cache tool results** | `search.py`, `weather.py` | In-process dict cache on `_serper_request`, `_geocode_city`, `_fetch_hourly_temperatures` — eliminates duplicate API calls within a run |
+| **Consolidate decompose steps** | `travel.py` | 7 steps → 4 (research+weather, logistics, itinerary+notes, budget) — fewer execute iterations |
+
+### Net effect
+
+- LLM calls per run: **~14 → ~7** (fewer decompose steps + loop cap)
+- Rate-limit headroom: **10 RPM (Gemini) → 30 RPM (Groq)**
+- Duplicate tool calls: **eliminated** (in-process caching)
+- Transient 429 errors: **auto-retried** with exponential backoff
+
+### Files modified
+
+```
+.env                                         — switched to groq/llama-3.3-70b-versatile
+src/atlas/config.py                          — added atlas_llm_num_retries + atlas_llm_request_timeout fields
+src/atlas/llm/router.py                      — pass max_retries + request_timeout to ChatLiteLLM
+src/atlas/agents/travel_agent.py             — recursion_limit=12 at invoke time
+src/atlas/prompts/travel.py                  — decompose prompt: 7 → 4 steps
+src/atlas/tools/search.py                    — in-process _serper_cache + clear_serper_cache()
+src/atlas/tools/weather.py                   — in-process _geocode_cache + _weather_cache + clear_weather_caches()
+tests/llm/test_router.py                     — test_get_llm_has_retry_and_timeout
+tests/tools/test_search.py                   — cache-clearing fixture + 3 cache tests
+tests/tools/test_weather.py                  — cache-clearing fixture + 4 cache tests
+docs/progress.md                             — this entry
+```
+
+### Tests
+
+127/127 passing (+8 new: 1 router retry, 3 search cache, 4 weather cache).
+
+---
+
 ## 2026-03-07 — Placeholder User Profile + Disk-Based Profile Loading
 
 ### What changed

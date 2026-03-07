@@ -8,9 +8,20 @@ import pytest
 from atlas.tools.search import (
     _get_api_key,
     _serper_request,
+    clear_serper_cache,
     search_places,
     search_web,
 )
+
+
+# ── Auto-clear cache between tests ───────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    clear_serper_cache()
+    yield
+    clear_serper_cache()
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -250,3 +261,40 @@ class TestSearchPlaces:
         result = search_places.invoke({"query": "test"})
         assert "error" in result
         assert "Places API" in result["error"]
+
+
+# ── Cache tests ──────────────────────────────────────────────────────────────
+
+
+class TestSerperCache:
+    def _patch(self, mocker):
+        mock_settings = mocker.MagicMock()
+        mock_settings.serper_api_key = "test-key"
+        mocker.patch("atlas.tools.search.get_settings", return_value=mock_settings)
+        return mocker.patch(
+            "atlas.tools.search.httpx.post",
+            side_effect=_mock_serper_post(),
+        )
+
+    def test_cache_hit_skips_http(self, mocker) -> None:
+        """Second identical request should be served from cache."""
+        mock_post = self._patch(mocker)
+        search_web.invoke({"query": "temples in Kyoto"})
+        search_web.invoke({"query": "temples in Kyoto"})
+        # httpx.post should be called only once — the second call is a cache hit.
+        assert mock_post.call_count == 1
+
+    def test_different_query_misses_cache(self, mocker) -> None:
+        """Different queries should each hit the API."""
+        mock_post = self._patch(mocker)
+        search_web.invoke({"query": "temples in Kyoto"})
+        search_web.invoke({"query": "food in Tokyo"})
+        assert mock_post.call_count == 2
+
+    def test_clear_cache_forces_refetch(self, mocker) -> None:
+        """After clearing, the same query should hit the API again."""
+        mock_post = self._patch(mocker)
+        search_web.invoke({"query": "temples in Kyoto"})
+        clear_serper_cache()
+        search_web.invoke({"query": "temples in Kyoto"})
+        assert mock_post.call_count == 2

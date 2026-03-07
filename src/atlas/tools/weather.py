@@ -35,6 +35,17 @@ _EVENING_HOURS = range(18, 22)  # 18:00–21:00
 
 # ── Internal helpers ─────────────────────────────────────────────────────────
 
+# In-process caches to avoid duplicate geocoding / weather API calls within
+# the same agent run.  Cleared between runs if needed via the public helpers.
+_geocode_cache: dict[tuple, dict] = {}
+_weather_cache: dict[tuple, dict] = {}
+
+
+def clear_weather_caches() -> None:
+    """Reset geocode and weather response caches."""
+    _geocode_cache.clear()
+    _weather_cache.clear()
+
 
 def _geocode_city(
     city: str,
@@ -42,7 +53,13 @@ def _geocode_city(
     state: str = "",
     country_code: str = "",
 ) -> dict:
-    """Resolve *city* to ``{name, lat, lon}`` via the Nominatim API."""
+    """Resolve *city* to ``{name, lat, lon}`` via the Nominatim API.
+
+    Results are cached in-process (city names are deterministic).
+    """
+    cache_key = (city, state, country_code)
+    if cache_key in _geocode_cache:
+        return _geocode_cache[cache_key]
     query = city
     if state:
         query += f", {state}"
@@ -70,11 +87,13 @@ def _geocode_city(
         raise ValueError(f"No location found for: {query}")
 
     hit = results[0]
-    return {
+    result = {
         "name": hit.get("display_name", city),
         "lat": float(hit["lat"]),
         "lon": float(hit["lon"]),
     }
+    _geocode_cache[cache_key] = result
+    return result
 
 
 def _fetch_hourly_temperatures(
@@ -85,7 +104,14 @@ def _fetch_hourly_temperatures(
     *,
     temperature_unit: str = "fahrenheit",
 ) -> dict:
-    """Fetch hourly temperatures from the Open-Meteo Archive API."""
+    """Fetch hourly temperatures from the Open-Meteo Archive API.
+
+    Results are cached in-process (historical weather data is immutable).
+    """
+    cache_key = (lat, lon, start_date, end_date, temperature_unit)
+    if cache_key in _weather_cache:
+        return _weather_cache[cache_key]
+
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -98,7 +124,9 @@ def _fetch_hourly_temperatures(
 
     resp = httpx.get(OPEN_METEO_URL, params=params, timeout=10)
     resp.raise_for_status()
-    return resp.json()
+    result = resp.json()
+    _weather_cache[cache_key] = result
+    return result
 
 
 def _avg(values: list[float | None]) -> float | None:

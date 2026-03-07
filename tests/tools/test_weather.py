@@ -10,8 +10,19 @@ from atlas.tools.weather import (
     _build_daily_summaries,
     _geocode_city,
     _fetch_hourly_temperatures,
+    clear_weather_caches,
     get_weather,
 )
+
+
+# ── Auto-clear cache between tests ───────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    clear_weather_caches()
+    yield
+    clear_weather_caches()
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -272,3 +283,52 @@ class TestGetWeatherTool:
         meteo_call = [c for c in mock_get.call_args_list if "open-meteo" in str(c)]
         assert meteo_call
         assert meteo_call[0].kwargs["params"]["temperature_unit"] == "celsius"
+
+
+# ── Cache tests ──────────────────────────────────────────────────────────────
+
+
+class TestGeocodeCache:
+    def test_cache_hit_skips_http(self, mocker) -> None:
+        """Second geocode call for the same city should not hit the API."""
+        mock_get = mocker.patch(
+            "atlas.tools.weather.httpx.get", side_effect=_mock_httpx_get()
+        )
+        _geocode_city("Kyoto")
+        _geocode_city("Kyoto")
+        # Nominatim should be called only once.
+        nominatim_calls = [c for c in mock_get.call_args_list if "nominatim" in str(c)]
+        assert len(nominatim_calls) == 1
+
+    def test_different_city_misses_cache(self, mocker) -> None:
+        """Different cities should each hit the API."""
+        mock_get = mocker.patch(
+            "atlas.tools.weather.httpx.get", side_effect=_mock_httpx_get()
+        )
+        _geocode_city("Kyoto")
+        _geocode_city("Tokyo")
+        nominatim_calls = [c for c in mock_get.call_args_list if "nominatim" in str(c)]
+        assert len(nominatim_calls) == 2
+
+
+class TestWeatherFetchCache:
+    def test_cache_hit_skips_http(self, mocker) -> None:
+        """Second weather fetch with same params should not re-fetch."""
+        mock_get = mocker.patch(
+            "atlas.tools.weather.httpx.get", side_effect=_mock_httpx_get()
+        )
+        _fetch_hourly_temperatures(35.0, 135.7, "2025-04-01", "2025-04-03")
+        _fetch_hourly_temperatures(35.0, 135.7, "2025-04-01", "2025-04-03")
+        meteo_calls = [c for c in mock_get.call_args_list if "open-meteo" in str(c)]
+        assert len(meteo_calls) == 1
+
+    def test_clear_cache_forces_refetch(self, mocker) -> None:
+        """After clearing, the same call should hit the API again."""
+        mock_get = mocker.patch(
+            "atlas.tools.weather.httpx.get", side_effect=_mock_httpx_get()
+        )
+        _fetch_hourly_temperatures(35.0, 135.7, "2025-04-01", "2025-04-03")
+        clear_weather_caches()
+        _fetch_hourly_temperatures(35.0, 135.7, "2025-04-01", "2025-04-03")
+        meteo_calls = [c for c in mock_get.call_args_list if "open-meteo" in str(c)]
+        assert len(meteo_calls) == 2

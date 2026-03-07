@@ -431,6 +431,11 @@ def invoke_agent(
             "parsed_query": None,
             "user_profile": user_profile,
             "task_plan": None,
-        }
+        },
+        # recursion_limit caps the total number of node transitions.
+        # The linear chain (ingest→enrich→decompose→execute) uses ~7
+        # hops, leaving ~5 iterations for the execute↔tools ReAct loop.
+        # This prevents runaway loops from exhausting API rate limits.
+        {"recursion_limit": 12},
     )
     return result["messages"][-1]

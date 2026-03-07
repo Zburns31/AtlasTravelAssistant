@@ -42,6 +42,22 @@ def test_get_llm_is_cached() -> None:
     assert a is b
 
 
+def test_get_llm_has_retry_and_timeout(monkeypatch) -> None:
+    """The router should configure num_retries and request_timeout."""
+    monkeypatch.setenv("ATLAS_LLM_NUM_RETRIES", "5")
+    monkeypatch.setenv("ATLAS_LLM_REQUEST_TIMEOUT", "60")
+
+    from atlas.config import get_settings
+    from atlas.llm.router import get_llm
+
+    get_settings.cache_clear()
+    get_llm.cache_clear()
+
+    llm = get_llm()
+    assert llm.max_retries == 5
+    assert llm.request_timeout == 60
+
+
 # ── Langfuse callback tests ────────────────────────────────────────
 
 

@@ -105,17 +105,18 @@ Return **only** a JSON array of task objects (no markdown fences):
 
 Available tools: ``search_web``, ``search_places``, ``get_weather``.
 
+**Keep the plan compact** — aim for **3–4 steps** to minimise API calls.
+
 Typical task plan for a full trip:
-1. **Research destination** — search for key attractions, neighbourhoods,
-   and practical info.
-2. **Check weather** — look up conditions for the travel dates.
-3. **Plan flights** — suggest outbound/return flights.
-4. **Find accommodation** — suggest lodging near key areas.
-5. **Build daily itinerary** — create time-blocked activities for each
-   day with categories, costs, and travel segments.
-6. **Add activity notes** — include practical tips, links, and transit
-   concerns for each activity.
-7. **Compute budget** — sum up flights + lodging + daily costs.
+1. **Research destination & weather** — search for key attractions,
+   neighbourhoods, and practical info; also check weather conditions
+   for the travel dates.
+2. **Plan logistics** — suggest outbound/return flights and
+   accommodation near key areas.
+3. **Build daily itinerary** — create time-blocked activities for each
+   day with categories, costs, travel segments, practical tips, links,
+   and transit concerns.
+4. **Compute budget** — sum up flights + lodging + daily costs.
 
 Adjust the plan based on the query:
 - If the user only wants a refinement, the plan may be just 1–2 steps.
