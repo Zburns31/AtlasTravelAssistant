@@ -13,6 +13,8 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from atlas.agents.travel_agent import (
     AgentState,
+    PROFILE_PATH,
+    _DEFAULT_USER_PROFILE,
     _extract_json,
     _load_user_profile,
     _make_decompose_node,
@@ -53,10 +55,44 @@ class TestExtractJson:
 
 
 # ── _load_user_profile ──────────────────────────────────────────────
-def test_load_user_profile_returns_default() -> None:
-    profile = _load_user_profile()
-    assert profile["preferred_pace"] == "moderate"
-    assert profile["trip_count"] == 0
+class TestLoadUserProfile:
+    def test_returns_default_when_no_file(self, tmp_path) -> None:
+        """Falls back to defaults when the profile file doesn't exist."""
+        missing = tmp_path / "nope.json"
+        profile = _load_user_profile(path=missing)
+        assert profile == _DEFAULT_USER_PROFILE
+
+    def test_loads_from_json_file(self, tmp_path) -> None:
+        """Reads a valid JSON profile from disk."""
+        profile_file = tmp_path / "user_profile.json"
+        data = {
+            "favourite_destination_types": ["coastal cities"],
+            "favourite_categories": ["food"],
+            "preferred_pace": "relaxed",
+            "typical_budget_usd": 2500.0,
+            "past_destinations": ["Tokyo", "Barcelona"],
+            "trip_count": 2,
+        }
+        profile_file.write_text(json.dumps(data), encoding="utf-8")
+
+        profile = _load_user_profile(path=profile_file)
+        assert profile["favourite_categories"] == ["food"]
+        assert profile["trip_count"] == 2
+        assert profile["past_destinations"] == ["Tokyo", "Barcelona"]
+
+    def test_returns_default_on_malformed_json(self, tmp_path) -> None:
+        """Falls back to defaults when JSON is invalid."""
+        bad_file = tmp_path / "user_profile.json"
+        bad_file.write_text("{not valid json!!!", encoding="utf-8")
+
+        profile = _load_user_profile(path=bad_file)
+        assert profile == _DEFAULT_USER_PROFILE
+
+    def test_default_path_is_home_atlas(self) -> None:
+        """PROFILE_PATH should point to ~/.atlas/user_profile.json."""
+        from pathlib import Path
+
+        assert PROFILE_PATH == Path.home() / ".atlas" / "user_profile.json"
 
 
 # ── State schema ────────────────────────────────────────────────────

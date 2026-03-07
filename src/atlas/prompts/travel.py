@@ -191,9 +191,3 @@ For each day:
 - Use markdown formatting — headers, bullet points, bold for emphasis.
 - If data was unavailable (e.g. weather API down), note it honestly.
 """
-
-
-# ── Legacy alias ─────────────────────────────────────────────────────
-# Kept for backward compatibility; new code should use the phase-specific
-# prompts above.
-SYSTEM_PROMPT = EXECUTE_PROMPT

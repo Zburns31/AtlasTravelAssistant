@@ -41,4 +41,7 @@ build-backend = "hatchling.build"
 packages = ["src/atlas"]
 
 [dependency-groups]
-dev = ["jupyterlab>=4.5.5"]
+dev = [
+    "grandalf>=0.8",
+    "jupyterlab>=4.5.5",
+]

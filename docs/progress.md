@@ -1,5 +1,43 @@
 # Atlas — Progress Log
 
+## 2026-03-07 — Placeholder User Profile + Disk-Based Profile Loading
+
+### What changed
+
+Wired up the user-profile persistence that was previously stubbed as a TODO. The agent now reads from `~/.atlas/user_profile.json` on startup and falls back to defaults when the file is missing or malformed.
+
+Created a **placeholder profile** to demonstrate how the enrich phase personalises itineraries based on trip history:
+
+| Field | Value |
+|---|---|
+| `favourite_destination_types` | coastal cities, historic towns, mountain retreats |
+| `favourite_categories` | food, culture, sightseeing |
+| `preferred_pace` | moderate |
+| `typical_budget_usd` | $3 000 |
+| `past_destinations` | Tokyo, Barcelona, Reykjavik, Lisbon, Chiang Mai |
+| `trip_count` | 5 |
+
+### How it works
+
+1. `_load_user_profile()` reads `~/.atlas/user_profile.json` (configurable path for tests).
+2. Falls back to `_DEFAULT_USER_PROFILE` on `FileNotFoundError` or `JSONDecodeError`.
+3. The **enrich** node passes the loaded profile to the LLM alongside the parsed query, so the agent can infer preferences (e.g. "User historically prefers food + culture activities").
+
+### Files modified
+
+```
+~/.atlas/user_profile.json                        — fake profile (5 past trips, food/culture/sightseeing preferences)
+src/atlas/agents/travel_agent.py                   — _load_user_profile reads from disk; added PROFILE_PATH constant
+tests/agents/test_travel_agent.py                  — 4 new profile-loading tests (file, missing, malformed, default path)
+docs/progress.md                                   — this entry
+```
+
+### Tests
+
+119/119 passing (25 agent + 94 existing).
+
+---
+
 ## 2026-03-06 — Separate Save (JSON) and Export (Markdown) Tools
 
 ### What changed

@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Annotated, Any, Sequence
 
 from langchain_core.language_models import BaseChatModel
@@ -66,7 +67,7 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from typing_extensions import TypedDict
 
-from atlas.agents.prompts import (
+from atlas.prompts import (
     DECOMPOSE_PROMPT,
     ENRICH_PROMPT,
     EXECUTE_PROMPT,
@@ -95,6 +96,8 @@ class AgentState(TypedDict):
 
 
 # ── Default user profile ────────────────────────────────────────────
+PROFILE_PATH = Path.home() / ".atlas" / "user_profile.json"
+
 _DEFAULT_USER_PROFILE: dict[str, Any] = {
     "favourite_destination_types": [],
     "favourite_categories": [],
@@ -105,13 +108,28 @@ _DEFAULT_USER_PROFILE: dict[str, Any] = {
 }
 
 
-def _load_user_profile() -> dict[str, Any]:
+def _load_user_profile(path: Path | None = None) -> dict[str, Any]:
     """Load the user profile from disk, or return the default.
 
-    TODO: Read from ``~/.atlas/user_profile.json`` once persistence is
-    wired up.  For now we always return the default profile.
+    Reads from ``~/.atlas/user_profile.json`` if it exists.  Falls back
+    to ``_DEFAULT_USER_PROFILE`` when the file is missing or malformed.
+
+    Parameters
+    ----------
+    path
+        Override the profile file path (used in tests).
     """
-    return dict(_DEFAULT_USER_PROFILE)
+    profile_path = path or PROFILE_PATH
+    try:
+        data = json.loads(profile_path.read_text(encoding="utf-8"))
+        logger.info("Loaded user profile from %s", profile_path)
+        return data
+    except FileNotFoundError:
+        logger.debug("No user profile at %s — using defaults.", profile_path)
+        return dict(_DEFAULT_USER_PROFILE)
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Failed to read user profile: %s — using defaults.", exc)
+        return dict(_DEFAULT_USER_PROFILE)
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
