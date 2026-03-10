@@ -27,6 +27,8 @@ from atlas.domain.models import (
 def _inject_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Inject required env vars so ``atlas.config`` loads cleanly."""
     monkeypatch.setenv("OPENAI_API_KEY", "test-key-not-real")
+    # Disable LLM throttling in tests so they run at full speed.
+    monkeypatch.setenv("ATLAS_LLM_CALL_DELAY", "0")
 
     # Clear the lru_cache so each test sees fresh settings.
     from atlas.config import get_settings

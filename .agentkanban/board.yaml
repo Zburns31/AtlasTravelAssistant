@@ -1,0 +1,8 @@
+lanes:
+  - id: todo
+    name: Todo
+  - id: doing
+    name: Doing
+  - id: done
+    name: Done
+basePrompt: ""

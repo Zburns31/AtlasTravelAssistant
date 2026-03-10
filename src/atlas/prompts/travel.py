@@ -105,21 +105,37 @@ Return **only** a JSON array of task objects (no markdown fences):
 
 Available tools: ``search_web``, ``search_places``, ``get_weather``.
 
-**Keep the plan compact** — aim for **3–4 steps** to minimise API calls.
+**Keep the plan compact** — aim for **2–3 steps** to minimise API calls.
+
+**Efficiency rules for tool usage:**
+- **Consolidate searches.**  Use ONE broad ``search_web`` query per topic
+  rather than many narrow ones (e.g. ``"Kyoto travel guide best
+  attractions restaurants neighbourhoods tips"`` instead of separate
+  searches for temples, food, and transport).
+- **Avoid redundant overlap** between ``search_web`` and
+  ``search_places``.  Use ``search_web`` for general info / guides and
+  ``search_places`` only when you specifically need structured POI data
+  (ratings, addresses, coordinates).
+- **Batch independent tools in one step.**  If a step needs both
+  ``search_web`` and ``get_weather``, list both — they will be called
+  in parallel.
+- Each search call returns up to 10 results, so one broad query usually
+  covers what multiple narrow queries would.
 
 Typical task plan for a full trip:
-1. **Research destination & weather** — search for key attractions,
-   neighbourhoods, and practical info; also check weather conditions
-   for the travel dates.
-2. **Plan logistics** — suggest outbound/return flights and
-   accommodation near key areas.
-3. **Build daily itinerary** — create time-blocked activities for each
-   day with categories, costs, travel segments, practical tips, links,
-   and transit concerns.
-4. **Compute budget** — sum up flights + lodging + daily costs.
+1. **Research destination** — ONE broad ``search_web`` call for
+   attractions, food, practical info, and neighbourhoods; ONE
+   ``get_weather`` call covering the **full trip date range** (one call
+   returns all days); optionally ONE
+   ``search_places`` call if structured POI data is needed.
+   All three can run in parallel.
+2. **Build itinerary & budget** — using the research gathered, create
+   time-blocked daily activities with categories, costs, travel
+   segments, flights, accommodation, and a budget summary.
+   Usually no extra tool calls needed.
 
 Adjust the plan based on the query:
-- If the user only wants a refinement, the plan may be just 1–2 steps.
+- If the user only wants a refinement, the plan may be just 1 step.
 - If it's a general question, the plan may be a single "answer
   question" step with no tools.
 - If dates are missing, add a step to suggest suitable travel dates.
@@ -137,58 +153,120 @@ You have been given:
 
 Work through the task plan step by step.  Use your tools proactively:
 - ``search_web`` — to look up destination info, travel guides, and
-  practical tips via Google Search.
+  practical tips via Google Search.  **The top results automatically
+  include extracted page content** (up to ~8 000 chars each), so you
+  already have detailed information — no need to fetch pages separately.
 - ``search_places`` — to find attractions, restaurants, and points of
   interest with ratings, addresses, and GPS coordinates.
-- ``get_weather`` — to check historical weather for specific dates.
+- ``get_weather`` — to check historical weather.  **Call once with the
+  full trip start/end date range** — it returns per-day summaries for
+  every day.  Do NOT call separately for each day.
 
 **Important rules:**
 - Call tools when the task plan says to — don't skip research steps.
-- After each tool call, briefly note what you learned before moving to
-  the next step.
+- Use the **structured tool-calling API** to invoke tools.  Do NOT emit
+  raw ``<function=…>`` XML tags — always use the proper function-calling
+  mechanism provided by the model API.
+- **Call multiple independent tools in a single turn** when possible
+  (e.g. ``search_web`` + ``get_weather`` in parallel).  Only wait
+  between calls when a later call depends on an earlier result.
+- After receiving tool results, briefly note what you learned before
+  moving on.
 - If a tool returns an error or placeholder data, note it and continue
   with your best knowledge.
 - Once all research steps are complete, begin building the itinerary
   content (flights, accommodation, daily activities).
 - Keep working until the entire task plan is addressed.
+- **Minimise API calls.** Prefer ONE broad query over several narrow
+  ones.  Each tool call returns up to 10 results — do not repeat a
+  search just to get more.
 """
 
 
 # ── Phase 5: Synthesise (final assembly) ─────────────────────────────
 SYNTHESISE_PROMPT = """\
-You are **Atlas**, an AI travel assistant assembling a final itinerary
-response.
+You are **Atlas**, an AI travel assistant assembling a final itinerary.
 
 Based on all the research and planning done so far in this conversation,
-produce a **complete, well-formatted travel itinerary** for the user.
+produce a **complete itinerary** as a **single JSON object** (no markdown
+fences, no extra text outside the JSON).
 
-## Required structure
+## Required JSON structure
 
-### Flights
-- Outbound and return flights: airline, times, duration, cabin class,
-  estimated cost.
+```
+{{
+  "destination_name": "<city or region>",
+  "destination_country": "<country>",
+  "start_date": "YYYY-MM-DD",
+  "end_date": "YYYY-MM-DD",
+  "flights": [
+    {{
+      "airline": "...",
+      "flight_number": "...",
+      "departure_airport": "XXX",
+      "arrival_airport": "YYY",
+      "departure_time": "YYYY-MM-DD HH:MM",
+      "arrival_time": "YYYY-MM-DD HH:MM",
+      "duration_hours": 0.0,
+      "cabin_class": "economy",
+      "estimated_cost_usd": 0.0
+    }}
+  ],
+  "accommodations": [
+    {{
+      "name": "...",
+      "star_rating": 4.0,
+      "nightly_rate_usd": 0.0,
+      "total_cost_usd": 0.0,
+      "check_in": "YYYY-MM-DD",
+      "check_out": "YYYY-MM-DD",
+      "description": "...",
+      "location": "..."
+    }}
+  ],
+  "days": [
+    {{
+      "date": "YYYY-MM-DD",
+      "weather_summary": "...",
+      "activities": [
+        {{
+          "title": "...",
+          "description": "Brief description",
+          "duration_hours": 2.0,
+          "category": "sightseeing",
+          "start_time": "HH:MM",
+          "end_time": "HH:MM",
+          "estimated_cost_usd": 0.0,
+          "location": "...",
+          "notes": ["Practical tip or useful link"]
+        }}
+      ],
+      "travel_segments": [
+        {{
+          "mode": "walk",
+          "duration_minutes": 10,
+          "description": "Walk south along ...",
+          "estimated_cost_usd": 0.0
+        }}
+      ]
+    }}
+  ]
+}}
+```
 
-### Accommodation
-- Property name, star rating, nightly rate, total cost, check-in/out,
-  location, brief description.
-
-### Daily itinerary
-For each day:
-- **Day header** with date and weather summary.
-- **Time-blocked activities**: each must have start_time (HH:MM),
-  end_time (HH:MM), category (sightseeing/food/culture/adventure/leisure),
-  estimated_cost_usd, and location.
-- **Travel segments** between activities: transit mode, duration, route
-  description.
-- **Activity notes**: practical tips, official links, Google Maps links,
-  transit concerns from the previous activity.
-
-### Budget summary
-- Per-day cost breakdown.
-- Total trip budget = flights + lodging + sum of daily costs.
-
-## Style
-- Be concise, practical, and enthusiastic.
-- Use markdown formatting — headers, bullet points, bold for emphasis.
-- If data was unavailable (e.g. weather API down), note it honestly.
+## Rules
+- **category** must be one of: sightseeing, food, culture, adventure, leisure.
+- **mode** must be one of: walk, bus, train, taxi, other.
+- Every activity must have ``start_time`` and ``end_time`` in 24-hr HH:MM.
+- Include travel segments between consecutive activities.
+- Activity ``notes`` MUST be a JSON **array of strings**: ``["tip1", "tip2"]``.
+- ``flights`` and ``accommodations`` MUST be JSON **arrays** (``[...]``),
+  even if there is only a single item.  Never use a bare object.
+- ``days`` MUST be a JSON **array** of day objects.
+- Validate your JSON before outputting — no trailing commas, no
+  unquoted keys, no comments.
+- If data was unavailable (weather API down, etc.), note it in the
+  relevant ``weather_summary`` or activity ``notes`` — do NOT omit the field.
+- Be concise, practical, and enthusiastic in descriptions.
+- Return **only** the JSON object — no surrounding text or markdown fences.
 """

@@ -196,6 +196,9 @@ def get_weather(
 ) -> dict:
     """Get daily temperature summaries for *city* from *start_date* to *end_date*.
 
+    **Call this ONCE with the full trip date range** — it returns per-day
+    summaries for every day in the range.  Do NOT call once per day.
+
     Both dates are inclusive and must be in ``YYYY-MM-DD`` format.
     Data comes from the Open-Meteo historical archive (free, no API key).
 

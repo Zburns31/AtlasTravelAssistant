@@ -67,6 +67,7 @@ class Destination(BaseModel):
     country: str
     iata_code: str | None = None
     coordinates: tuple[float, float] | None = None  # (lat, lon)
+    description: str | None = None
 
 
 class ActivityNote(BaseModel):
@@ -93,6 +94,7 @@ class Activity(BaseModel):
     location: str | None = None
     coordinates: tuple[float, float] | None = None
     notes: list[ActivityNote] = Field(default_factory=list)
+    highlighted: bool = False
 
 
 class TravelSegment(BaseModel):
@@ -114,6 +116,8 @@ class ItineraryDay(BaseModel):
     travel_segments: list[TravelSegment] = Field(default_factory=list)
     notes: str = ""
     source: DaySource = DaySource.GENERATED
+    weather_icon: str | None = None  # emoji e.g. "☀️"
+    weather_temp_c: int | None = None
 
 
 class Flight(BaseModel):

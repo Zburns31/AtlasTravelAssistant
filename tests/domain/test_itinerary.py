@@ -1,8 +1,7 @@
-"""Tests for the itinerary tools (``atlas.tools.itinerary``)."""
+"""Tests for itinerary domain services (``atlas.domain.itinerary``)."""
 
 from __future__ import annotations
 
-import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -22,14 +21,12 @@ from atlas.domain.models import (
     TravelSegment,
     TripPreferences,
 )
-from atlas.tools.itinerary import (
+from atlas.domain.itinerary import (
     _format_cost,
     _itinerary_slug,
     _slugify,
-    export_itinerary_markdown,
     export_markdown_to_disk,
     itinerary_to_markdown,
-    save_itinerary,
     save_itinerary_to_disk,
 )
 
@@ -360,74 +357,3 @@ class TestExportMarkdownToDisk:
         nested_dir = tmp_path / "downloads" / "trips"
         result = export_markdown_to_disk(rich_itinerary, directory=nested_dir)
         assert Path(result["markdown_path"]).exists()
-
-
-# ── Integration tests: @tool save_itinerary ─────────────────────────────────
-
-
-class TestSaveItineraryTool:
-    def test_valid_json(self, rich_itinerary: Itinerary, tmp_path: Path, monkeypatch):
-        monkeypatch.setattr("atlas.tools.itinerary.ITINERARIES_DIR", tmp_path)
-        result = save_itinerary.invoke(
-            {"itinerary_json": rich_itinerary.model_dump_json()}
-        )
-        assert result["status"] == "saved"
-        assert "json_path" in result
-        assert "markdown_path" not in result
-
-    def test_invalid_json(self):
-        result = save_itinerary.invoke({"itinerary_json": "not valid json"})
-        assert "error" in result
-        assert "Invalid itinerary JSON" in result["error"]
-
-    def test_invalid_itinerary_structure(self):
-        """Valid JSON but not a valid Itinerary structure."""
-        result = save_itinerary.invoke({"itinerary_json": json.dumps({"foo": "bar"})})
-        assert "error" in result
-
-    def test_tool_name(self):
-        assert save_itinerary.name == "save_itinerary"
-
-    def test_tool_description(self):
-        assert "Save a trip itinerary" in save_itinerary.description
-
-
-# ── Integration tests: @tool export_itinerary_markdown ──────────────────────
-
-
-class TestExportItineraryMarkdownTool:
-    def test_valid_json(self, rich_itinerary: Itinerary, tmp_path: Path, monkeypatch):
-        monkeypatch.setattr("atlas.tools.itinerary.DOWNLOADS_DIR", tmp_path)
-        result = export_itinerary_markdown.invoke(
-            {"itinerary_json": rich_itinerary.model_dump_json()}
-        )
-        assert result["status"] == "exported"
-        assert "markdown_path" in result
-        assert Path(result["markdown_path"]).exists()
-
-    def test_exported_content(
-        self, rich_itinerary: Itinerary, tmp_path: Path, monkeypatch
-    ):
-        monkeypatch.setattr("atlas.tools.itinerary.DOWNLOADS_DIR", tmp_path)
-        result = export_itinerary_markdown.invoke(
-            {"itinerary_json": rich_itinerary.model_dump_json()}
-        )
-        content = Path(result["markdown_path"]).read_text(encoding="utf-8")
-        assert "# 🗺️ Trip to Kyoto, Japan" in content
-
-    def test_invalid_json(self):
-        result = export_itinerary_markdown.invoke({"itinerary_json": "not valid json"})
-        assert "error" in result
-        assert "Invalid itinerary JSON" in result["error"]
-
-    def test_invalid_itinerary_structure(self):
-        result = export_itinerary_markdown.invoke(
-            {"itinerary_json": json.dumps({"foo": "bar"})}
-        )
-        assert "error" in result
-
-    def test_tool_name(self):
-        assert export_itinerary_markdown.name == "export_itinerary_markdown"
-
-    def test_tool_description(self):
-        assert "Export a trip itinerary" in export_itinerary_markdown.description

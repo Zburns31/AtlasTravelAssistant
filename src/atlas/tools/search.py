@@ -14,10 +14,15 @@ All HTTP is done via ``httpx`` so it can be cleanly mocked in tests.
 
 from __future__ import annotations
 
+import logging
+
 import httpx
 from langchain_core.tools import tool
 
 from atlas.config import get_settings
+from atlas.tools.fetch import fetch_page_content
+
+logger = logging.getLogger(__name__)
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
@@ -82,14 +87,22 @@ def search_web(query: str, num_results: int = 5) -> dict:
     """Search the web for travel-related information.
 
     Returns organic Google search results including titles, snippets,
-    and links, plus a knowledge-graph summary when available.
+    links, and **extracted page content** for the top results, plus a
+    knowledge-graph summary when available.
+
+    The ``page_content`` field on the top results contains the full
+    main-body text of the page (up to ~8 000 chars), so you usually
+    do **not** need to fetch pages separately.
+
+    Use broad, comprehensive queries to minimise the number of calls
+    (e.g. ``"Kyoto travel guide temples restaurants budget tips"``).
 
     Parameters
     ----------
     query
         Free-text search (e.g. ``"best temples to visit in Kyoto April"``).
     num_results
-        Number of organic results to return (default 5, max 10).
+        Number of organic results to return (default 10, max 10).
     """
     num_results = max(1, min(num_results, 10))
 
@@ -113,6 +126,15 @@ def search_web(query: str, num_results: int = 5) -> dict:
         }
         for r in raw.get("organic", [])
     ]
+
+    # ── Auto-fetch page content for top N results ────────────────────
+    fetch_top_n = get_settings().atlas_fetch_top_n
+    for item in organic[:fetch_top_n]:
+        link = item.get("link", "")
+        if link:
+            content = fetch_page_content(link)
+            if content:
+                item["page_content"] = content
 
     result: dict = {"query": query, "results": organic}
 
@@ -145,7 +167,7 @@ def search_places(query: str, num_results: int = 5) -> dict:
         Place search (e.g. ``"top restaurants in Rome"``,
         ``"museums near Central Park NYC"``).
     num_results
-        Number of place results to return (default 5, max 10).
+        Number of place results to return (default 8, max 10).
     """
     num_results = max(1, min(num_results, 10))
 

@@ -29,15 +29,35 @@ class Settings(BaseSettings):
     )
 
     # ------------------------------------------------------------------
-    # LLM / LiteLLM
+    # LLM (all routing handled by LiteLLM via model string prefix)
     # ------------------------------------------------------------------
+    openrouter_api_key: str = Field(
+        default="",
+        description=(
+            "OpenRouter API key. Get one at https://openrouter.ai/keys. "
+            "Required when ATLAS_LLM_MODEL starts with 'openrouter/'."
+        ),
+    )
+    groq_api_key: str = Field(
+        default="",
+        description=(
+            "Groq API key. Get one at https://console.groq.com. "
+            "Required when ATLAS_LLM_MODEL starts with 'groq/'."
+        ),
+    )
+    google_api_key: str = Field(
+        default="",
+        description=(
+            "Google AI API key (for Gemini via LiteLLM). "
+            "Required when ATLAS_LLM_MODEL starts with 'gemini/'."
+        ),
+    )
     atlas_llm_model: str = Field(
         default="openai/gpt-4o",
         description=(
-            "LiteLLM model string used by get_llm(). "
-            "Format: <provider>/<model>.  Examples: openai/gpt-4o, "
-            "anthropic/claude-3-5-sonnet, groq/llama-3.3-70b-versatile, "
-            "gemini/gemini-2.0-flash"
+            "LiteLLM model string.  The prefix selects the provider: "
+            "openrouter/<model>, groq/<model>, gemini/<model>, "
+            "openai/<model>, anthropic/<model>, etc."
         ),
     )
     atlas_llm_temperature: float = Field(
@@ -48,12 +68,27 @@ class Settings(BaseSettings):
         default=3,
         description=(
             "Number of retries on transient LLM errors (429, 500). "
-            "LiteLLM uses exponential backoff between retries."
+            "Uses exponential backoff between retries."
         ),
     )
     atlas_llm_request_timeout: float = Field(
         default=30.0,
         description="Per-request timeout in seconds for LLM calls.",
+    )
+    atlas_llm_call_delay: float = Field(
+        default=3.0,
+        description=(
+            "Minimum delay in seconds between consecutive LLM calls. "
+            "Helps stay within free-tier RPM quotas (~20 RPM). "
+            "Set to 0.0 to disable throttling."
+        ),
+    )
+    atlas_llm_max_tokens: int | None = Field(
+        default=1024,
+        description=(
+            "Default max_tokens for LLM responses. Applied to planning "
+            "phases (ingest, enrich, decompose). Set to None for no limit."
+        ),
     )
 
     # ------------------------------------------------------------------
@@ -81,6 +116,21 @@ class Settings(BaseSettings):
             "Serper.dev API key for Google Search / Places. "
             "Get a free key at https://serper.dev (2 500 queries free)."
         ),
+    )
+
+    # ------------------------------------------------------------------
+    # Auto-fetch (enrich search results with page content)
+    # ------------------------------------------------------------------
+    atlas_fetch_top_n: int = Field(
+        default=1,
+        description=(
+            "Number of top search_web results to auto-fetch and extract "
+            "page content for. Set to 0 to disable auto-fetching."
+        ),
+    )
+    atlas_fetch_max_chars: int = Field(
+        default=1500,
+        description="Max characters of extracted page content per URL.",
     )
 
     # ------------------------------------------------------------------

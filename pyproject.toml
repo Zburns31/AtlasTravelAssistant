@@ -6,14 +6,12 @@ readme = "README.md"
 authors = [{ name = "zburns31", email = "zacbburns@gmail.com" }]
 requires-python = ">=3.10"
 dependencies = [
-    # LLM orchestration — LiteLLM provides a unified Python interface
-    # for 100+ providers (OpenAI, Anthropic, Google, Groq, Ollama, etc.)
-    # Switch models by changing ATLAS_LLM_MODEL; set the provider's API key.
+    # LLM orchestration — LiteLLM routes to any provider via model string.
     "langchain>=0.3",
-    "langchain-litellm>=0.6", # ChatLiteLLM BaseChatModel wrapper
-    "litellm>=1.30", # Unified LLM client (all providers)
-    "langfuse>=2.0", # LLM observability — traces, cost, latency
-    "langgraph>=0.2", # StateGraph-based agent orchestration
+    "langchain-litellm>=0.2", # ChatLiteLLM — unified LLM interface
+    "litellm>=1.0",           # LiteLLM routing engine
+    "langfuse>=2.0",          # LLM observability — traces, cost, latency
+    "langgraph>=0.2",         # StateGraph-based agent orchestration
     # Structured data
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
@@ -24,6 +22,8 @@ dependencies = [
     # Utilities
     "python-dotenv>=1.0",
     "httpx>=0.27",
+    "trafilatura>=2.0.0",
+    "openrouter>=0.7.11",
 ]
 
 [project.optional-dependencies]
@@ -41,8 +41,4 @@ build-backend = "hatchling.build"
 packages = ["src/atlas"]
 
 [dependency-groups]
-dev = [
-    "grandalf>=0.8",
-    "jupyterlab>=4.5.5",
-    "nbstripout>=0.9.1",
-]
+dev = ["grandalf>=0.8", "jupyterlab>=4.5.5", "nbstripout>=0.9.1"]

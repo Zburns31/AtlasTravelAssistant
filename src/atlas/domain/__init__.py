@@ -1,1 +1,1 @@
-"""Domain models and business logic."""
+"""Domain models, business logic, and application services."""

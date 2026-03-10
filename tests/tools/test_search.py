@@ -5,6 +5,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from atlas.tools.fetch import clear_fetch_cache
 from atlas.tools.search import (
     _get_api_key,
     _serper_request,
@@ -20,8 +21,10 @@ from atlas.tools.search import (
 @pytest.fixture(autouse=True)
 def _clear_cache():
     clear_serper_cache()
+    clear_fetch_cache()
     yield
     clear_serper_cache()
+    clear_fetch_cache()
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -142,6 +145,7 @@ class TestSearchWeb:
     def _patch(self, mocker, search_json=None):
         mock_settings = mocker.MagicMock()
         mock_settings.serper_api_key = "test-key"
+        mock_settings.atlas_fetch_top_n = 0  # Disable auto-fetch in unit tests
         mocker.patch("atlas.tools.search.get_settings", return_value=mock_settings)
         return mocker.patch(
             "atlas.tools.search.httpx.post",
@@ -270,6 +274,7 @@ class TestSerperCache:
     def _patch(self, mocker):
         mock_settings = mocker.MagicMock()
         mock_settings.serper_api_key = "test-key"
+        mock_settings.atlas_fetch_top_n = 0  # Disable auto-fetch in cache tests
         mocker.patch("atlas.tools.search.get_settings", return_value=mock_settings)
         return mocker.patch(
             "atlas.tools.search.httpx.post",
@@ -298,3 +303,65 @@ class TestSerperCache:
         clear_serper_cache()
         search_web.invoke({"query": "temples in Kyoto"})
         assert mock_post.call_count == 2
+
+
+# ── Auto-fetch integration tests ─────────────────────────────────────────
+
+
+class TestSearchWebAutoFetch:
+    """Verify search_web enriches top-N results with page content."""
+
+    def _patch(self, mocker, fetch_top_n=2):
+        """Patch Serper httpx.post, settings, and fetch_page_content."""
+        mock_settings = mocker.MagicMock()
+        mock_settings.serper_api_key = "test-key"
+        mock_settings.atlas_fetch_top_n = fetch_top_n
+        mocker.patch("atlas.tools.search.get_settings", return_value=mock_settings)
+        mocker.patch(
+            "atlas.tools.search.httpx.post",
+            side_effect=_mock_serper_post(),
+        )
+        # Mock fetch_page_content at the search module level.
+        return mocker.patch(
+            "atlas.tools.search.fetch_page_content",
+            return_value="Extracted page content here.",
+        )
+
+    def test_top_n_results_get_page_content(self, mocker) -> None:
+        """Top 2 results should have page_content populated."""
+        mock_fetch = self._patch(mocker, fetch_top_n=2)
+        result = search_web.invoke({"query": "Kyoto travel"})
+        results = result["results"]
+        assert len(results) == 2
+        # Both should have page_content (our fixture has exactly 2 results).
+        assert results[0]["page_content"] == "Extracted page content here."
+        assert results[1]["page_content"] == "Extracted page content here."
+        assert mock_fetch.call_count == 2
+
+    def test_only_top_n_fetched(self, mocker) -> None:
+        """Only the first result should be fetched when top_n=1."""
+        mock_fetch = self._patch(mocker, fetch_top_n=1)
+        result = search_web.invoke({"query": "Kyoto travel"})
+        results = result["results"]
+        assert "page_content" in results[0]
+        assert "page_content" not in results[1]
+        assert mock_fetch.call_count == 1
+
+    def test_fetch_disabled_when_top_n_zero(self, mocker) -> None:
+        """No fetching when atlas_fetch_top_n is 0."""
+        mock_fetch = self._patch(mocker, fetch_top_n=0)
+        result = search_web.invoke({"query": "Kyoto travel"})
+        for r in result["results"]:
+            assert "page_content" not in r
+        mock_fetch.assert_not_called()
+
+    def test_fetch_failure_graceful(self, mocker) -> None:
+        """If fetch returns empty string, page_content is not added."""
+        self._patch(mocker, fetch_top_n=2)
+        mocker.patch(
+            "atlas.tools.search.fetch_page_content",
+            return_value="",
+        )
+        result = search_web.invoke({"query": "Kyoto travel"})
+        for r in result["results"]:
+            assert "page_content" not in r
