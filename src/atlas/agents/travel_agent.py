@@ -104,6 +104,7 @@ class AgentState(TypedDict):
     parsed_query: dict[str, Any] | None
     user_profile: dict[str, Any] | None
     task_plan: list[dict[str, Any]] | None
+    destination_coordinates: tuple[float, float] | None
     itinerary: Itinerary | None
     itinerary_md: str | None
 
@@ -390,7 +391,19 @@ def _make_execute_node(llm: BaseChatModel):
         except Exception as exc:
             response = _handle_tool_call_error(exc)
 
-        return {"messages": [response]}
+        # Extract geocoded coordinates from weather tool results.
+        coords = state.get("destination_coordinates")
+        for m in state["messages"]:
+            if isinstance(m, ToolMessage) and isinstance(m.content, str):
+                try:
+                    tool_data = json.loads(m.content)
+                    loc = tool_data.get("location")
+                    if isinstance(loc, dict) and "lat" in loc and "lon" in loc:
+                        coords = (float(loc["lat"]), float(loc["lon"]))
+                except (json.JSONDecodeError, ValueError, TypeError):
+                    pass
+
+        return {"messages": [response], "destination_coordinates": coords}
 
     return execute
 
@@ -488,6 +501,19 @@ def _make_synthesise_node(llm: BaseChatModel):
 
         try:
             itinerary = parse_agent_result(raw_content, enriched_query=enriched_query)
+
+            # Weather-tool coords (from Nominatim) are primary; LLM coords are fallback.
+            tool_coords = state.get("destination_coordinates")
+            best_coords = tool_coords or itinerary.destination.coordinates
+            if best_coords and best_coords != itinerary.destination.coordinates:
+                itinerary = itinerary.model_copy(
+                    update={
+                        "destination": itinerary.destination.model_copy(
+                            update={"coordinates": best_coords}
+                        )
+                    }
+                )
+
             itinerary_md = itinerary_to_markdown(itinerary)
             logger.info(
                 "Parsed structured itinerary: %s → %s (%d days)",
@@ -627,6 +653,7 @@ def invoke_agent(
             "parsed_query": None,
             "user_profile": user_profile,
             "task_plan": None,
+            "destination_coordinates": None,
             "itinerary": None,
             "itinerary_md": None,
         },

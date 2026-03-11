@@ -271,6 +271,30 @@ class TestBuildItinerary:
         assert itinerary.preferences.interests == ["temples", "food"]
         assert itinerary.preferences.pace == TripPace.PACKED
 
+    def test_destination_coordinates_wired(self) -> None:
+        out = _sample_itinerary_out()
+        out.destination_lat = 35.0116
+        out.destination_lon = 135.7681
+        itinerary = build_itinerary(out)
+
+        assert itinerary.destination.coordinates == (35.0116, 135.7681)
+
+    def test_destination_coordinates_none_when_missing(self) -> None:
+        out = _sample_itinerary_out()
+        assert out.destination_lat is None
+        assert out.destination_lon is None
+        itinerary = build_itinerary(out)
+
+        assert itinerary.destination.coordinates is None
+
+    def test_destination_coordinates_none_when_partial(self) -> None:
+        out = _sample_itinerary_out()
+        out.destination_lat = 35.0
+        # destination_lon remains None
+        itinerary = build_itinerary(out)
+
+        assert itinerary.destination.coordinates is None
+
     def test_default_preferences_without_enriched_query(self) -> None:
         out = _sample_itinerary_out()
         itinerary = build_itinerary(out)

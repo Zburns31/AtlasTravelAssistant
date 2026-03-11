@@ -197,6 +197,8 @@ fences, no extra text outside the JSON).
 {{
   "destination_name": "<city or region>",
   "destination_country": "<country>",
+  "destination_lat": <latitude as decimal number>,
+  "destination_lon": <longitude as decimal number>,
   "start_date": "YYYY-MM-DD",
   "end_date": "YYYY-MM-DD",
   "flights": [
@@ -255,6 +257,8 @@ fences, no extra text outside the JSON).
 ```
 
 ## Rules
+- **destination_lat** and **destination_lon** must be the approximate GPS
+  coordinates (decimal degrees) of the destination city centre.
 - **category** must be one of: sightseeing, food, culture, adventure, leisure.
 - **mode** must be one of: walk, bus, train, taxi, other.
 - Every activity must have ``start_time`` and ``end_time`` in 24-hr HH:MM.

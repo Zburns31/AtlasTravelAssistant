@@ -105,6 +105,7 @@ def test_agent_state_has_phase_fields() -> None:
         "parsed_query": {"intent": "plan_trip"},
         "user_profile": {"preferred_pace": "relaxed"},
         "task_plan": [{"step": 1, "task": "research"}],
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -124,6 +125,7 @@ def test_ingest_node_parses_query(mock_llm: BaseChatModel) -> None:
         "parsed_query": None,
         "user_profile": None,
         "task_plan": None,
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -143,6 +145,7 @@ def test_ingest_node_uses_ingest_prompt(mock_llm: BaseChatModel) -> None:
         "parsed_query": None,
         "user_profile": None,
         "task_plan": None,
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -169,6 +172,7 @@ def test_enrich_node_merges_profile(mock_llm: BaseChatModel) -> None:
         "parsed_query": {"destination": "Tokyo"},
         "user_profile": None,
         "task_plan": None,
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -188,6 +192,7 @@ def test_enrich_node_uses_enrich_prompt(mock_llm: BaseChatModel) -> None:
         "parsed_query": {},
         "user_profile": None,
         "task_plan": None,
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -210,6 +215,7 @@ def test_decompose_node_produces_plan(mock_llm: BaseChatModel) -> None:
         "parsed_query": {"destination": "Tokyo"},
         "user_profile": None,
         "task_plan": None,
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -231,6 +237,7 @@ def test_decompose_wraps_single_dict_in_list(mock_llm: BaseChatModel) -> None:
         "parsed_query": {},
         "user_profile": None,
         "task_plan": None,
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -259,6 +266,7 @@ def test_execute_node_includes_plan_context(mock_llm: BaseChatModel) -> None:
         "parsed_query": {"destination": "Paris"},
         "user_profile": None,
         "task_plan": [{"step": 1, "task": "Search"}],
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -287,6 +295,7 @@ def test_synthesise_node_uses_synth_prompt(mock_llm: BaseChatModel) -> None:
         "parsed_query": {},
         "user_profile": None,
         "task_plan": [],
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -317,6 +326,7 @@ def test_synthesise_node_strips_tool_messages(mock_llm: BaseChatModel) -> None:
         "parsed_query": {"destination": "Kyoto"},
         "user_profile": None,
         "task_plan": [],
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -347,6 +357,7 @@ def test_should_continue_routes_to_synthesise_on_plain_message() -> None:
         "parsed_query": None,
         "user_profile": None,
         "task_plan": None,
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -370,6 +381,7 @@ def test_should_continue_routes_to_tools_on_tool_calls() -> None:
         "parsed_query": None,
         "user_profile": None,
         "task_plan": None,
+        "destination_coordinates": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -504,6 +516,7 @@ class TestExecuteNodeRecovery:
             "parsed_query": {"destination": "Kyoto"},
             "user_profile": None,
             "task_plan": [{"step": 1, "task": "Research"}],
+            "destination_coordinates": None,
             "itinerary": None,
             "itinerary_md": None,
         }

@@ -137,6 +137,8 @@ class ItineraryOut(BaseModel):
 
     destination_name: str
     destination_country: str
+    destination_lat: float | None = None
+    destination_lon: float | None = None
     start_date: str  # "YYYY-MM-DD"
     end_date: str  # "YYYY-MM-DD"
     flights: list[FlightOut] = Field(default_factory=list)
@@ -250,9 +252,15 @@ def build_itinerary(
     """
     eq = enriched_query or {}
 
+    # Wire destination coordinates when the LLM provides them
+    dest_coords: tuple[float, float] | None = None
+    if output.destination_lat is not None and output.destination_lon is not None:
+        dest_coords = (output.destination_lat, output.destination_lon)
+
     destination = Destination(
         name=output.destination_name,
         country=output.destination_country,
+        coordinates=dest_coords,
     )
 
     preferences = TripPreferences(

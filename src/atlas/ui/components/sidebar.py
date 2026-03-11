@@ -1,14 +1,14 @@
 """Render the right-hand sidebar: map, destination info, budget, stats.
 
-Uses Plotly ``scattermapbox`` with free ``carto-darkmatter`` tiles (no
-Mapbox token needed) for the activity pin map.
+Uses ``plotly.express.scatter_map`` (MapLibre GL) for a clean,
+high-fidelity destination pin map — no API key required.
 """
 
 from __future__ import annotations
 
 from collections import Counter
 
-import plotly.graph_objects as go
+import plotly.express as px
 from dash import dcc, html
 
 from atlas.domain.models import (
@@ -62,61 +62,39 @@ def render_sidebar(itinerary: Itinerary) -> list:
 
 
 def _render_map(itinerary: Itinerary) -> html.Div:
-    """Render a Plotly scattermapbox with colour-coded activity pins."""
-    lats: list[float] = []
-    lons: list[float] = []
-    texts: list[str] = []
-    colours: list[str] = []
+    """Render a clean scatter_map with a single city-level destination pin."""
+    coords = itinerary.destination.coordinates
+    has_coords = coords is not None
 
-    # Collect activity coordinates
-    for day in itinerary.days:
-        for act in day.activities:
-            if act.coordinates:
-                lats.append(act.coordinates[0])
-                lons.append(act.coordinates[1])
-                texts.append(act.title)
-                colours.append(_PIN_COLOUR.get(act.category, "#e8eaed"))
+    center_lat = coords[0] if has_coords else 0.0
+    center_lon = coords[1] if has_coords else 0.0
 
-    # Add accommodation pins
-    for acc in itinerary.accommodations:
-        if acc.coordinates:
-            lats.append(acc.coordinates[0])
-            lons.append(acc.coordinates[1])
-            texts.append(f"🏨 {acc.name}")
-            colours.append("#a78bfa")  # purple for hotels
-
-    # Fallback centre: destination coords or first pin
-    center_lat, center_lon = 35.0, 135.7  # default (Kyoto-ish)
-    if itinerary.destination.coordinates:
-        center_lat, center_lon = itinerary.destination.coordinates
-    elif lats:
-        center_lat = sum(lats) / len(lats)
-        center_lon = sum(lons) / len(lons)
-
-    fig = go.Figure()
-
-    if lats:
-        fig.add_trace(
-            go.Scattermapbox(
-                lat=lats,
-                lon=lons,
-                mode="markers+text",
-                marker=dict(size=12, color=colours),
-                text=texts,
-                textposition="top center",
-                textfont=dict(size=9, color="#fff"),
-                hoverinfo="text",
-            )
+    if has_coords:
+        label = f"{itinerary.destination.name}, {itinerary.destination.country}"
+        fig = px.scatter_map(
+            lat=[center_lat],
+            lon=[center_lon],
+            text=[label],
+            size=[1],
+            size_max=16,
+            zoom=10,
+            center={"lat": center_lat, "lon": center_lon},
         )
+        fig.update_traces(
+            marker=dict(color="#e74c3c"),
+            textposition="top center",
+            textfont=dict(size=12),
+        )
+    else:
+        fig = px.scatter_map(
+            lat=[0],
+            lon=[0],
+            zoom=1,
+        )
+        fig.update_traces(marker=dict(opacity=0))
 
     fig.update_layout(
-        mapbox=dict(
-            style="carto-darkmatter",
-            center=dict(lat=center_lat, lon=center_lon),
-            zoom=12 if lats else 10,
-        ),
         margin=dict(l=0, r=0, t=0, b=0),
-        paper_bgcolor="#22262e",
         showlegend=False,
         height=260,
     )
