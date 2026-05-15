@@ -1,0 +1,152 @@
+@import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+/* ── Atlas Design System tokens (mirrors .github/DESIGN.md) ─────── */
+@theme {
+  /* Colors */
+  --color-canvas-white: #ffffff;
+  --color-ghost-gray: #f2f2f2;
+  --color-subtle-ash: #e5e5e5;
+  --color-midtone-gray: #737373;
+  --color-rich-black: #0a0a0a;
+  --color-deep-black: #000000;
+  --color-callout-red: #c22b10;
+  --color-success-green: #10c22b;
+
+  /* Activity category colors — ported from atlas.ui.components.sidebar._PIN_COLOUR */
+  --color-cat-food: #f59e0b;
+  --color-cat-culture: #a78bfa;
+  --color-cat-sightseeing: #60a5fa;
+  --color-cat-adventure: #f87171;
+  --color-cat-leisure: #2dd4bf;
+
+  /* Typography */
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo,
+    Monaco, Consolas, monospace;
+
+  /* Type scale */
+  --text-caption: 12px;
+  --text-caption--line-height: 1.5;
+  --text-body: 14px;
+  --text-body--line-height: 1.43;
+  --text-heading: 18px;
+  --text-heading--line-height: 1.33;
+  --text-heading--letter-spacing: -0.45px;
+  --text-display: 48px;
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: -2.4px;
+
+  /* Border radius */
+  --radius-md: 4px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-3xl: 26px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-elevated: oklab(0.145 0 0 / 0.1) 0px 0px 0px 1px;
+  --shadow-focus: lab(100 0 0) 0px 0px 0px 2px;
+}
+
+/* ── Base layer ─────────────────────────────────────────────────── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-canvas-white);
+    color: var(--color-rich-black);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    color: var(--color-deep-black);
+    letter-spacing: -0.01em;
+  }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  /* Hide scrollbar chrome but keep scrolling */
+  .scroll-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: var(--color-subtle-ash);
+    border-radius: 9999px;
+  }
+}
+
+/* ── Typing indicator animation (chat) ──────────────────────────── */
+@keyframes typing-dots {
+  0%,
+  20% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+  80%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
+.typing-dots span {
+  display: inline-block;
+  animation: typing-dots 1.2s infinite;
+}
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* ── Markdown surface inside assistant messages ────────────────── */
+.markdown-surface p {
+  margin: 0 0 8px;
+}
+.markdown-surface p:last-child {
+  margin-bottom: 0;
+}
+.markdown-surface ul,
+.markdown-surface ol {
+  margin: 4px 0 8px 18px;
+}
+.markdown-surface code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--color-ghost-gray);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.markdown-surface a {
+  color: var(--color-deep-black);
+  text-decoration: underline;
+}
+.markdown-surface strong {
+  font-weight: 600;
+}

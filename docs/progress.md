@@ -1,5 +1,53 @@
 # Atlas — Progress Log
 
+## 2026-05-15 — Migrate Frontend from Dash to Next.js + Add FastAPI Backend
+
+### Goal
+Replace the Plotly Dash UI with a more performant React/TypeScript frontend while preserving the existing three-panel layout (chat / itinerary / sidebar) and applying the new design system in `.github/DESIGN.md`.
+
+### What shipped
+**Phase 1 — FastAPI HTTP layer (`src/atlas/api/`)**
+- New `web` extras group in `pyproject.toml` (`fastapi`, `uvicorn[standard]`, `sse-starlette`) and `atlas-api` console script.
+- `server.py` — FastAPI app with CORS allowing `http://localhost:3000`, OpenAPI exposed at `/openapi.json`, health route at `/api/health`.
+- `routes/chat.py` — `POST /api/chat`, `GET /api/history/{session_id}` wrapping `handle_chat` / `get_chat_history`.
+- `routes/itinerary.py` — `GET /api/itinerary/{session_id}`, `POST .../save`, `POST .../export` wrapping `get_current_itinerary` / `handle_save` / `handle_export`.
+- `routes/profile.py` — `GET` / `PUT /api/profile`.
+- `routes/stream.py` — `POST /api/chat/stream` SSE endpoint (currently emits `thinking` + final `done` event; ready for `astream_events` upgrade).
+- Profile persistence moved from `atlas.ui.components.profile` → `atlas.domain.profile`; the old path stays as a re-export shim so the legacy Dash callbacks keep working.
+- `tests/api/test_server.py` — 11 new tests covering chat / history / itinerary / save / export / profile routes. All 242 tests pass (`uv run pytest`).
+
+**Phase 2–7 — Next.js frontend (`web/`)**
+- Next.js 15 (App Router) + React 19 + TypeScript scaffold with `pnpm` as the package manager.
+- Tailwind v4 `@theme` tokens in `web/app/globals.css` mirror `.github/DESIGN.md` (colors, type scale, radii, shadows). Geist + Geist Mono via `next/font/google`.
+- `web/next.config.ts` proxies `/api/*` to `http://localhost:8000` (override via `ATLAS_API_ORIGIN`).
+- Typed API client (`web/lib/api.ts`) + hand-written domain types (`web/lib/types.ts`) mirroring the Pydantic models. `pnpm generate:types` re-syncs them from `/openapi.json`.
+- Zustand store (`web/lib/store.ts`) holds the session id (persisted to `localStorage`), chat messages, current itinerary, status text.
+- UI primitives in `web/components/ui/`: `Button` (Primary/Ghost/Outline/Soft/Destructive via `class-variance-authority`), `Card`, `Input`, `Badge`, `Modal`, `Tabs`.
+- Chat panel (`web/components/chat/`) — `ChatPanel`, `MessageBubble` (with `react-markdown` + `remark-gfm`), `TypingIndicator`. `useChat` hook owns optimistic user bubble + thinking state and resyncs from `/api/history` after each turn (replaces the Dash clientside callback).
+- Itinerary panel (`web/components/itinerary/`) — `ItineraryPanel` (header + tabs + Load/Export/Save actions), `FlightCard`, `AccommodationCard`, `DaySection` (with vertical timeline), `ActivityCard` (expandable, category-coloured dot + badge), `TravelConnector`, `EmptyState`.
+- Sidebar panel (`web/components/sidebar/`) — `MapCard` (MapLibre GL via `react-map-gl`, free `demotiles.maplibre.org` style — no API key), `DestinationInfo`, `BudgetTable` (flight/lodging/food/activity/transport totals ported verbatim from `_render_budget_table`), `TripStats`, `StatusBar`.
+- Profile modal (`web/components/profile/ProfileModal.tsx`) with tag-list editors, pace dropdown, daily budget. `useProfile` hook loads + persists via `GET/PUT /api/profile`.
+- Activity-category colours centralised in `web/lib/categoryStyles.ts` — identical palette to `atlas.ui.components.sidebar._PIN_COLOUR`.
+
+**Phase 8 — Polish & DX**
+- `web/README.md` with quick-start, scripts, and architectural notes.
+- Root `README.md` updated: tech-stack table now lists Next.js + FastAPI, "Run the App" shows the new two-process flow plus legacy Dash instructions.
+- Legacy Dash UI (`src/atlas/ui/`) left in place during transition — flagged for removal in a follow-up PR.
+
+### Verification
+- `uv run pytest` → 242 passed.
+- `cd web && npx tsc --noEmit` → clean.
+- `cd web && npx next build` → clean production build, 166 kB First Load JS for `/`.
+- `uv run python -c "from atlas.api.server import app; print(sorted(app.openapi()['paths']))"` → all 8 expected routes present.
+
+### Architectural notes
+- Dash UI is **not** deleted in this PR. Both frontends can run side-by-side: Dash on `:8050`, Next.js on `:3000`, FastAPI on `:8000`.
+- In-memory `_sessions` dict in `atlas.api.handlers` is reused as-is — single-worker FastAPI assumption (document for prod).
+- SSE endpoint exists but emits the full response as a single `done` event. Real token-level streaming via `langgraph.astream_events` is queued as the next iteration; the client API (`/api/chat/stream` + `thinking`/`done`/`error` event names) is stable.
+- MapLibre demo tiles work for dev but are rate-limited; swap to MapTiler/Stadia for production.
+
+---
+
 ## 2026-03-09 — Fix Structured Parsing & Rendering of LLM Itinerary Output
 
 ### Problem

@@ -26,7 +26,9 @@ Describe your trip in plain language — *"Plan a 5-day trip to Kyoto in April, 
 | LLM Router | [LiteLLM](https://docs.litellm.ai) — unified Python client for 100+ providers |
 | LLM Observability | [Langfuse](https://langfuse.com) — traces, latencies, token usage, cost tracking |
 | Structured Data | Pydantic v2 |
-| Frontend | Plotly Dash + `dash-bootstrap-components` |
+| Frontend (legacy) | Plotly Dash + `dash-bootstrap-components` |
+| Frontend (new) | Next.js 15 (App Router) + React 19 + TypeScript + Tailwind v4 — see [`web/`](web/) |
+| API | FastAPI + Uvicorn (REST + SSE) — see [`src/atlas/api/server.py`](src/atlas/api/server.py) |
 | Build | Hatchling (`pyproject.toml`) |
 | Testing | pytest + pytest-mock |
 | Linting | Ruff |
@@ -119,11 +121,24 @@ ATLAS_LLM_MODEL=openai/gpt-4o
 
 ### Run the App
 
+**New Next.js frontend (recommended)** — single command via Make:
+
+```bash
+make install   # one-time: uv sync + pnpm install
+make dev       # runs FastAPI (:8000) + Next.js (:3000); Ctrl-C stops both
+```
+
+Or run the two processes individually with `make api` and `make web`.
+
+Open [http://localhost:3000](http://localhost:3000). See [`web/README.md`](web/README.md) for details.
+
+**Legacy Dash UI** (kept during the transition; will be removed in a follow-up):
+
 ```bash
 python src/atlas/ui/app.py
 ```
 
-Open [http://localhost:8050](http://localhost:8050) in your browser.
+Open [http://localhost:8050](http://localhost:8050).
 
 ---
 
