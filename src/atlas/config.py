@@ -9,7 +9,7 @@ Usage:
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,15 +52,17 @@ class Settings(BaseSettings):
             "Required when ATLAS_LLM_MODEL starts with 'nvidia_nim/'."
         ),
     )
-    google_api_key: str = Field(
+    gemini_api_key: str = Field(
         default="",
+        validation_alias=AliasChoices("GEMINI_API_KEY", "GOOGLE_API_KEY"),
         description=(
-            "Google AI API key (for Gemini via LiteLLM). "
+            "Gemini API key (for Gemini via LiteLLM). "
+            "Accepts either GEMINI_API_KEY or GOOGLE_API_KEY. "
             "Required when ATLAS_LLM_MODEL starts with 'gemini/'."
         ),
     )
     atlas_llm_model: str = Field(
-        default="openai/gpt-4o",
+        default="gemini/gemini-3-flash-preview",
         description=(
             "LiteLLM model string.  The prefix selects the provider: "
             "openrouter/<model>, groq/<model>, gemini/<model>, "

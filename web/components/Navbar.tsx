@@ -10,7 +10,7 @@ interface NavbarProps {
   onOpenProfile: () => void;
 }
 
-export function Navbar({ model = "openai/gpt-4o", onOpenProfile }: NavbarProps) {
+export function Navbar({ model = "gemini/gemini-3-flash-preview", onOpenProfile }: NavbarProps) {
   return (
     <nav className="h-12 px-5 flex items-center justify-between border-b border-subtle-ash bg-canvas-white shrink-0">
       <div className="flex items-center gap-2 font-semibold text-deep-black tracking-tight">

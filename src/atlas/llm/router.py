@@ -9,7 +9,7 @@ Example ``ATLAS_LLM_MODEL`` values:
 
 * ``openrouter/google/gemini-3-flash-preview``        → OpenRouter (``OPENROUTER_API_KEY``)
 * ``groq/llama-3.3-70b-versatile``                    → Groq      (``GROQ_API_KEY``)
-* ``gemini/gemini-2.5-flash``                          → Google    (``GEMINI_API_KEY``)
+* ``gemini/gemini-3-flash-preview``                    → Google    (``GEMINI_API_KEY`` or ``GOOGLE_API_KEY``)
 * ``openai/gpt-4o``                                    → OpenAI    (``OPENAI_API_KEY``)
 * ``anthropic/claude-3-5-sonnet``                      → Anthropic (``ANTHROPIC_API_KEY``)
 * ``nvidia_nim/meta/llama-3.1-70b-instruct``           → NVIDIA    (``NVIDIA_NIM_API_KEY``)

@@ -1,5 +1,20 @@
 # Atlas — Progress Log
 
+## 2026-06-24 — Migrate Default LLM to Gemini 3 Flash
+
+### Goal
+Switch Atlas onto Gemini 3 Flash as the default LLM target and remove the env-var mismatch that made Gemini setup brittle.
+
+### What changed
+- `src/atlas/config.py` now defaults `ATLAS_LLM_MODEL` to `gemini/gemini-3-flash-preview`.
+- Gemini credentials now load from `GEMINI_API_KEY` with backward compatibility for `GOOGLE_API_KEY`.
+- `src/atlas/llm/router.py`, `.env`, `.env.example`, and `README.md` now advertise Gemini 3 Flash as the primary model path.
+- `web/components/Navbar.tsx` now shows the Gemini model label by default when the backend model has not been loaded yet.
+- Test bootstrapping now injects `GEMINI_API_KEY`, and `tests/llm/test_router.py` verifies the settings alias.
+
+### Verification
+- Targeted router/config pytest slice passes after the config change.
+
 ## 2026-05-15 — Migrate Frontend from Dash to Next.js + Add FastAPI Backend
 
 ### Goal

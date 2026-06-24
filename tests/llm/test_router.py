@@ -6,7 +6,6 @@ import time
 
 from langchain_core.language_models import BaseChatModel
 
-
 # ── Core behaviour ──────────────────────────────────────────────────
 
 
@@ -55,6 +54,18 @@ def test_get_llm_uses_configured_model(monkeypatch) -> None:
 
     llm = get_llm()
     assert llm.model == "groq/llama-3.3-70b-versatile"
+
+
+def test_settings_accept_gemini_api_key(monkeypatch) -> None:
+    """Settings should load Gemini credentials from ``GEMINI_API_KEY``."""
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-test-key")
+
+    from atlas.config import get_settings
+
+    get_settings.cache_clear()
+
+    settings = get_settings()
+    assert settings.gemini_api_key == "gemini-test-key"
 
 
 def test_get_llm_uses_configured_temperature(monkeypatch) -> None:

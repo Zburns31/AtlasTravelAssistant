@@ -104,12 +104,13 @@ cp .env.example .env
 # .env
 
 # Set the API key for your chosen LLM provider:
-OPENAI_API_KEY=sk-...          # for openai/* models
+# GEMINI_API_KEY=...           # for gemini/* models
+# OPENAI_API_KEY=sk-...        # for openai/* models
 # ANTHROPIC_API_KEY=sk-ant-... # for anthropic/* models
 # GROQ_API_KEY=gsk_...         # for groq/* models
 
 # Model in LiteLLM format: <provider>/<model>
-ATLAS_LLM_MODEL=openai/gpt-4o
+ATLAS_LLM_MODEL=gemini/gemini-3-flash-preview
 
 # Optional: Langfuse observability (https://langfuse.com)
 # LANGFUSE_PUBLIC_KEY=pk-...
@@ -153,7 +154,7 @@ Atlas uses [LiteLLM](https://docs.litellm.ai) for model routing. To switch model
 | `anthropic/claude-3-5-sonnet` | Anthropic | `ANTHROPIC_API_KEY` |
 | `anthropic/claude-3-haiku` | Anthropic (fast) | `ANTHROPIC_API_KEY` |
 | `groq/llama-3.3-70b-versatile` | Groq (fast open models) | `GROQ_API_KEY` |
-| `gemini/gemini-2.0-flash` | Google | `GEMINI_API_KEY` |
+| `gemini/gemini-3-flash-preview` | Google | `GEMINI_API_KEY` |
 | `ollama/llama3` | Ollama (local) | *(none)* |
 
 ---
