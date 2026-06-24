@@ -45,6 +45,13 @@ class Settings(BaseSettings):
             "Required when ATLAS_LLM_MODEL starts with 'groq/'."
         ),
     )
+    nvidia_nim_api_key: str = Field(
+        default="",
+        description=(
+            "NVIDIA NIM API key. Get one at https://build.nvidia.com. "
+            "Required when ATLAS_LLM_MODEL starts with 'nvidia_nim/'."
+        ),
+    )
     google_api_key: str = Field(
         default="",
         description=(
