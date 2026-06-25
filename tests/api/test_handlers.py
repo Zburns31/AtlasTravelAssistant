@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,6 +18,7 @@ from atlas.api.handlers import (
     handle_chat,
     handle_export,
     handle_save,
+    stream_chat_events,
 )
 from atlas.api.schemas import (
     ChatRequest,
@@ -30,7 +32,6 @@ from atlas.domain.models import (
     Itinerary,
     TripPreferences,
 )
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────
 
@@ -74,6 +75,7 @@ class TestSchemas:
         resp = ChatResponse(reply="Here is your trip!", session_id="s1")
         data = resp.model_dump()
         assert data["reply"] == "Here is your trip!"
+        assert data["task_plan"] is None
         assert data["itinerary"] is None
 
     def test_save_response(self) -> None:
@@ -97,6 +99,14 @@ class TestHandleChat:
         mock_get_llm.return_value = mock_llm
         mock_invoke.return_value = {
             "response": AIMessage(content="Here is your Kyoto trip!"),
+            "task_plan": [
+                {
+                    "step": 1,
+                    "task": "Research Kyoto",
+                    "tools": ["search_web"],
+                    "notes": "Start broad",
+                }
+            ],
             "itinerary": None,
             "itinerary_md": None,
         }
@@ -106,6 +116,8 @@ class TestHandleChat:
 
         assert isinstance(response, ChatResponse)
         assert "Kyoto" in response.reply
+        assert response.task_plan is not None
+        assert response.task_plan[0]["task"] == "Research Kyoto"
         mock_invoke.assert_called_once()
 
     @patch("atlas.api.handlers.invoke_agent")
@@ -118,6 +130,7 @@ class TestHandleChat:
         mock_get_llm.return_value = mock_llm
         mock_invoke.return_value = {
             "response": AIMessage(content='{"destination_name": "Kyoto"}'),
+            "task_plan": [{"step": 1, "task": "Plan Kyoto", "tools": []}],
             "itinerary": sample_itinerary,
             "itinerary_md": "# Trip to Kyoto\n...",
         }
@@ -126,6 +139,8 @@ class TestHandleChat:
         response = handle_chat(request)
 
         assert response.itinerary is not None
+        assert response.task_plan is not None
+        assert response.task_plan[0]["task"] == "Plan Kyoto"
         assert response.itinerary.destination.name == "Kyoto"
         assert response.itinerary_md == "# Trip to Kyoto\n..."
         # Should be cached
@@ -138,6 +153,7 @@ class TestHandleChat:
         mock_get_llm.return_value = MagicMock()
         mock_invoke.return_value = {
             "response": AIMessage(content="Response 1"),
+            "task_plan": None,
             "itinerary": None,
             "itinerary_md": None,
         }
@@ -147,6 +163,91 @@ class TestHandleChat:
 
         history = get_chat_history("default")
         assert len(history) == 4  # 2 user + 2 assistant
+
+
+class TestStreamChatEvents:
+    @pytest.mark.asyncio
+    @patch("atlas.api.handlers.build_travel_agent")
+    @patch("atlas.api.handlers.get_llm")
+    async def test_stream_emits_plan_and_tool_events(
+        self,
+        mock_get_llm,
+        mock_build_agent,
+    ) -> None:
+        mock_get_llm.return_value = MagicMock()
+
+        class FakeGraph:
+            async def astream(self, *_args, **_kwargs):
+                yield {
+                    "decompose": {
+                        "messages": [],
+                        "task_plan": [
+                            {
+                                "step": 1,
+                                "task": "Research Kyoto",
+                                "tools": ["search_web"],
+                            }
+                        ],
+                    }
+                }
+                yield {
+                    "execute": {
+                        "messages": [
+                            AIMessage(
+                                content="",
+                                tool_calls=[
+                                    {
+                                        "id": "call_1",
+                                        "name": "search_web",
+                                        "args": {"query": "Kyoto"},
+                                    }
+                                ],
+                            )
+                        ]
+                    }
+                }
+                yield {
+                    "tools": {
+                        "messages": [
+                            SimpleNamespace(
+                                content="Top Kyoto attractions...",
+                                name="search_web",
+                            )
+                        ]
+                    }
+                }
+                yield {
+                    "synthesise": {
+                        "messages": [AIMessage(content="# Kyoto itinerary")],
+                        "itinerary": None,
+                        "itinerary_md": "# Kyoto itinerary",
+                    }
+                }
+
+        mock_build_agent.return_value = FakeGraph()
+
+        events = []
+        async for event in stream_chat_events(
+            ChatRequest(message="Plan Kyoto", session_id="s1")
+        ):
+            events.append(event)
+
+        assert [event["event"] for event in events] == [
+            "thinking",
+            "plan_ready",
+            "tool_started",
+            "tool_finished",
+            "done",
+        ]
+        assert "Research Kyoto" in events[1]["data"]
+        assert "search_web" in events[2]["data"]
+        assert "Top Kyoto attractions" in events[3]["data"]
+        assert "Kyoto itinerary" in events[4]["data"]
+
+        history = get_chat_history("s1")
+        assert len(history) == 2
+        assert history[0]["role"] == "user"
+        assert history[1]["role"] == "assistant"
 
 
 # ── Save/Export handler tests ────────────────────────────────────────

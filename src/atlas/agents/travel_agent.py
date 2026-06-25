@@ -638,7 +638,7 @@ def invoke_agent(
     -------
     dict
         Keys: ``response`` (AIMessage), ``itinerary`` (Itinerary | None),
-        ``itinerary_md`` (str | None).
+        ``itinerary_md`` (str | None), ``task_plan`` (list[dict[str, Any]] | None).
     """
     graph = build_travel_agent(llm)
 
@@ -668,6 +668,7 @@ def invoke_agent(
         "response": result["messages"][-1],
         "itinerary": result.get("itinerary"),
         "itinerary_md": result.get("itinerary_md"),
+        "task_plan": result.get("task_plan"),
     }
 
 

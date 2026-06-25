@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
@@ -227,6 +227,25 @@ def _parse_datetime(s: str) -> datetime:
     raise ValueError(f"Cannot parse datetime: {s!r}")
 
 
+def _resolve_trip_dates(
+    output: ItineraryOut,
+    enriched_query: dict[str, Any],
+) -> tuple[date, date]:
+    """Resolve authoritative itinerary dates.
+
+    Prefer explicit dates from the enriched query because they come from
+    the user's request. Fall back to the LLM output when the query does
+    not provide valid dates.
+    """
+
+    eq_start = enriched_query.get("start_date")
+    eq_end = enriched_query.get("end_date")
+
+    start_date = _parse_date(eq_start) if eq_start else _parse_date(output.start_date)
+    end_date = _parse_date(eq_end) if eq_end else _parse_date(output.end_date)
+    return start_date, end_date
+
+
 # ── Transform to domain models ──────────────────────────────────────
 
 
@@ -250,7 +269,8 @@ def build_itinerary(
     Itinerary
         A fully validated domain model.
     """
-    eq = enriched_query or {}
+    eq: dict[str, Any] = enriched_query or {}
+    start_date, end_date = _resolve_trip_dates(output, eq)
 
     # Wire destination coordinates when the LLM provides them
     dest_coords: tuple[float, float] | None = None
@@ -272,7 +292,7 @@ def build_itinerary(
 
     # ── Transform days ──────────────────────────────────────────────
     days: list[ItineraryDay] = []
-    for d in output.days:
+    for day_index, d in enumerate(output.days):
         activities: list[Activity] = []
         for a in d.activities:
             notes = [
@@ -303,10 +323,22 @@ def build_itinerary(
         ]
 
         try:
-            day_date = _parse_date(d.date)
+            parsed_day_date = _parse_date(d.date)
         except ValueError:
-            logger.warning("Skipping day with unparseable date: %r", d.date)
-            continue
+            logger.warning(
+                "Repairing unparseable day date from trip window: %r", d.date
+            )
+            parsed_day_date = start_date + timedelta(days=day_index)
+
+        expected_day_date = start_date + timedelta(days=day_index)
+        if parsed_day_date != expected_day_date:
+            logger.info(
+                "Normalizing day date %s -> %s for day %d",
+                parsed_day_date,
+                expected_day_date,
+                day_index + 1,
+            )
+        day_date = expected_day_date
 
         days.append(
             ItineraryDay(
@@ -359,8 +391,8 @@ def build_itinerary(
 
     return Itinerary(
         destination=destination,
-        start_date=_parse_date(output.start_date),
-        end_date=_parse_date(output.end_date),
+        start_date=start_date,
+        end_date=end_date,
         preferences=preferences,
         days=days,
         flights=flights,

@@ -1,5 +1,66 @@
 # Atlas — Progress Log
 
+## 2026-06-25 — Fix Frontend Invalid Date Rendering
+
+### Goal
+Stop the Next.js itinerary UI from rendering `Invalid Date` when the backend sends mixed date and time string formats.
+
+### What changed
+- `web/lib/format.ts` now uses a shared safe parser that accepts date-only strings (`YYYY-MM-DD`), time-only strings (`HH:MM` / `HH:MM:SS`), space-separated datetimes, and ISO datetimes.
+- The shared formatters now fail closed to empty output instead of surfacing `Invalid Date` in itinerary cards.
+- `nightsBetween(...)` now handles date-only values with stable UTC day math, avoiding local DST drift in accommodation night counts.
+- `web/components/itinerary/DaySection.tsx` now uses the shared formatter instead of calling `new Date(...)` directly for day headings.
+- `web/lib/types.ts` now documents activity start/end times as `HH:MM`-style strings to match the actual backend payload.
+
+### Verification
+- `cd web && npx tsc --noEmit` → clean.
+
+## 2026-06-25 — Fix Invalid Itinerary Dates
+
+### Goal
+Stop generated itineraries from returning invalid or hallucinated dates when the user explicitly provided trip dates.
+
+### What changed
+- `src/atlas/domain/parsing.py` now resolves itinerary `start_date` and `end_date` from the enriched query when explicit user dates are available, instead of blindly trusting the synthesizer's top-level dates.
+- `src/atlas/domain/parsing.py` now normalizes each itinerary day to the resolved trip window, assigning sequential dates from the trip start so malformed or inconsistent LLM day dates no longer leak through to the UI.
+- `tests/domain/test_parsing.py` now covers invalid day-date repair, enriched-query date override, and full trip-window normalization.
+
+### Verification
+- `uv run pytest tests/domain/test_parsing.py` → 73 passed.
+
+## 2026-06-25 — Fix Itinerary Tab After Stream Refactor
+
+### Goal
+Restore itinerary rendering in the Next.js UI after the streamed chat flow stopped delivering the final `done` event payload to the client store.
+
+### What changed
+- `web/lib/api.ts` now parses SSE frames with either `\r\n\r\n` or `\n\n` separators instead of assuming LF-only framing.
+- The stream consumer now splits event lines with CRLF-safe handling and flushes any final buffered event when the response closes.
+- This restores delivery of the final streamed itinerary payload, so the itinerary tab receives `setItinerary(...)` again after trip-planning requests.
+
+### Verification
+- `cd web && npx tsc --noEmit` → clean.
+
+## 2026-06-24 — Stream Planning Progress + Remove Dash UI
+
+### Goal
+Start the incremental planning refactor by exposing the agent's high-level task plan end to end, streaming plan and tool progress to the web client, and deleting the no-longer-supported Dash UI.
+
+### What changed
+- `src/atlas/agents/travel_agent.py` now returns `task_plan` from `invoke_agent()` so downstream API layers can expose it without re-reading graph state.
+- `src/atlas/api/schemas.py` and `src/atlas/api/handlers.py` now include `task_plan` in `ChatResponse`, and `handle_chat()` uses a shared response-finalization path.
+- `src/atlas/api/handlers.py` now exposes `stream_chat_events()` backed by `build_travel_agent(...).astream(..., stream_mode="updates")`, emitting `thinking`, `plan_ready`, `tool_started`, `tool_finished`, and `done` events.
+- `src/atlas/api/routes/stream.py` now proxies the structured event stream instead of wrapping the old blocking `handle_chat()` call in a thread.
+- `tests/api/test_handlers.py` and `tests/api/test_server.py` now cover task-plan serialization and the streamed event sequence.
+- `web/lib/types.ts`, `web/lib/api.ts`, `web/lib/store.ts`, and `web/hooks/useChat.ts` now support POST-based SSE consumption, streamed planning state, and tool-progress updates.
+- `web/components/itinerary/ItineraryPanel.tsx` now renders a draft plan plus live research updates before the final itinerary arrives.
+- Deleted `src/atlas/ui/` and removed Dash dependencies from `pyproject.toml`; `uv.lock`, runtime config text, and server comments were updated to match the FastAPI + Next.js-only architecture.
+
+### Verification
+- `uv run pytest tests/api/test_handlers.py tests/api/test_server.py` → 28 passed.
+- `cd web && npx tsc --noEmit` → clean.
+- `uv lock` → clean lockfile refresh after removing Dash dependencies.
+
 ## 2026-06-24 — Migrate Default LLM to Gemini 3 Flash
 
 ### Goal

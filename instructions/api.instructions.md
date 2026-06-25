@@ -4,7 +4,7 @@ Apply these conventions when creating or modifying any file inside `src/atlas/ap
 
 ## Route Structure
 
-Route handlers in `src/atlas/api/` are called by Dash callbacks in `src/atlas/ui/callbacks.py`. They validate input, delegate to domain functions, and return typed Pydantic responses.
+Route handlers in `src/atlas/api/` are called by FastAPI routes and consumed by the Next.js web client. They validate input, delegate to domain functions, and return typed Pydantic responses.
 
 ```python
 # src/atlas/api/<resource>.py
@@ -15,7 +15,7 @@ from atlas.domain.<resource> import <domain_function>
 class <Resource>Request(BaseModel): ...
 class <Resource>Response(BaseModel): ...
 
-# Handler — called from Dash callbacks, NOT from domain layer
+# Handler — called from the API layer, NOT from domain layer
 def handle_<resource>(request: <Resource>Request) -> <Resource>Response:
     result = <domain_function>(**request.model_dump())
     return <Resource>Response.model_validate(result.model_dump())

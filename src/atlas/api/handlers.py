@@ -1,19 +1,19 @@
 """API handlers — thin orchestration between UI and domain/agent layers.
 
 Handlers accept validated Pydantic request objects, invoke the agent or
-domain services, and return Pydantic response objects.  They do **not**
+domain services, and return Pydantic response objects. They do **not**
 call LLMs directly — that's the agent's job.
-
-The Dash callbacks in ``atlas.ui.callbacks`` call these handlers.
 """
 
 from __future__ import annotations
 
+import json
 import logging
+from typing import Any, AsyncIterator
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
-from atlas.agents.travel_agent import invoke_agent
+from atlas.agents.travel_agent import build_travel_agent, invoke_agent
 from atlas.api.schemas import (
     ChatRequest,
     ChatResponse,
@@ -41,39 +41,27 @@ def _get_history(session_id: str) -> list[BaseMessage]:
     return _sessions.setdefault(session_id, [])
 
 
-# ── Chat handler ────────────────────────────────────────────────────
+def _build_initial_state(
+    user_message: str,
+    chat_history: list[BaseMessage] | None = None,
+    user_profile: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    messages: list[BaseMessage] = []
+    if chat_history:
+        messages.extend(chat_history)
+    messages.append(HumanMessage(content=user_message))
+    return {
+        "messages": messages,
+        "parsed_query": None,
+        "user_profile": user_profile,
+        "task_plan": None,
+        "destination_coordinates": None,
+        "itinerary": None,
+        "itinerary_md": None,
+    }
 
 
-def handle_chat(request: ChatRequest) -> ChatResponse:
-    """Process a user message through the full agent pipeline.
-
-    1. Load chat history for the session.
-    2. Invoke the multi-phase agent.
-    3. Store the response in history.
-    4. Return structured + Markdown itinerary if available.
-    """
-    history = _get_history(request.session_id)
-
-    llm = get_llm()
-    result = invoke_agent(
-        llm,
-        user_message=request.message,
-        chat_history=history if history else None,
-    )
-
-    # Extract structured data.
-    response_msg = result["response"]
-    itinerary: Itinerary | None = result.get("itinerary")
-    itinerary_md: str | None = result.get("itinerary_md")
-
-    # Cache the itinerary for save/export operations.
-    if itinerary is not None:
-        _itineraries[request.session_id] = itinerary
-
-    # The reply shown in chat: prefer rendered Markdown over raw JSON.
-    # AIMessage.content may be a list of content blocks (e.g. Anthropic)
-    # — normalise to a plain string before creating the response.
-    raw_content = response_msg.content
+def _normalise_message_content(raw_content: Any) -> str:
     if isinstance(raw_content, list):
         parts = []
         for block in raw_content:
@@ -83,15 +71,13 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
                 parts.append(block.get("text", str(block)))
             else:
                 parts.append(str(block))
-        raw_content = "\n".join(parts)
-    elif not isinstance(raw_content, str):
-        raw_content = str(raw_content)
+        return "\n".join(parts)
+    if isinstance(raw_content, str):
+        return raw_content
+    return str(raw_content)
 
-    reply = itinerary_md or raw_content
 
-    # Build a user-friendly chat summary for the assistant reply.
-    # When a structured itinerary is available, provide a concise
-    # confirmation rather than dumping the raw synthesise JSON.
+def _build_chat_reply(reply: str, itinerary: Itinerary | None) -> str:
     if itinerary is not None:
         dest = itinerary.destination
         n_days = len(itinerary.days)
@@ -102,7 +88,6 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
             f"Check the itinerary panel for the full day-by-day breakdown "
             f"with timings, costs, and travel details.\n\n"
         )
-        # Add highlights from each day
         for idx, day in enumerate(itinerary.days, start=1):
             day_label = day.date.strftime("%a, %b %d")
             act_titles = [a.title for a in day.activities[:3]]
@@ -117,29 +102,156 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
             chat_reply += (
                 f"\n🏨 {len(itinerary.accommodations)} accommodation(s) suggested"
             )
-        chat_reply += "\n\nFeel free to ask me to refine any part of the plan!"
-    else:
-        # Never store raw JSON in chat history — detect and replace.
-        stripped_reply = reply.strip() if isinstance(reply, str) else ""
-        if stripped_reply.startswith("{") or stripped_reply.startswith("["):
-            chat_reply = (
-                "I generated an itinerary but had trouble structuring it "
-                "properly. You can see the raw plan in the itinerary panel. "
-                "Try rephrasing your request or asking me to refine the plan!"
-            )
-        else:
-            chat_reply = reply
+        return chat_reply + "\n\nFeel free to ask me to refine any part of the plan!"
 
-    # Update session history with the user-friendly chat reply.
+    stripped_reply = reply.strip()
+    if stripped_reply.startswith("{") or stripped_reply.startswith("["):
+        return (
+            "I generated an itinerary but had trouble structuring it "
+            "properly. You can see the raw plan in the itinerary panel. "
+            "Try rephrasing your request or asking me to refine the plan!"
+        )
+    return reply
+
+
+def _finalize_chat_response(
+    request: ChatRequest,
+    history: list[BaseMessage],
+    result: dict[str, Any],
+) -> ChatResponse:
+    response_msg = result["response"]
+    task_plan = result.get("task_plan")
+    itinerary: Itinerary | None = result.get("itinerary")
+    itinerary_md: str | None = result.get("itinerary_md")
+
+    if itinerary is not None:
+        _itineraries[request.session_id] = itinerary
+
+    raw_content = _normalise_message_content(response_msg.content)
+    reply = itinerary_md or raw_content
+    chat_reply = _build_chat_reply(reply, itinerary)
+
     history.append(HumanMessage(content=request.message))
     history.append(AIMessage(content=chat_reply))
 
     return ChatResponse(
         reply=reply,
+        task_plan=task_plan,
         itinerary=itinerary,
         itinerary_md=itinerary_md,
         session_id=request.session_id,
     )
+
+
+def _last_ai_message(messages: list[Any] | None) -> AIMessage | None:
+    if not messages:
+        return None
+    for message in reversed(messages):
+        if isinstance(message, AIMessage):
+            return message
+    return None
+
+
+def _tool_payload(tool_message: Any) -> dict[str, Any]:
+    content = _normalise_message_content(getattr(tool_message, "content", ""))
+    return {
+        "tool": getattr(tool_message, "name", None),
+        "content_preview": content[:160],
+    }
+
+
+# ── Chat handler ────────────────────────────────────────────────────
+
+
+def handle_chat(request: ChatRequest) -> ChatResponse:
+    """Process a user message through the full agent pipeline.
+
+    1. Load chat history for the session.
+    2. Invoke the multi-phase agent.
+    3. Store the response in history.
+    4. Return structured plan + itinerary data if available.
+    """
+    history = _get_history(request.session_id)
+
+    llm = get_llm()
+    result = invoke_agent(
+        llm,
+        user_message=request.message,
+        chat_history=history if history else None,
+    )
+    return _finalize_chat_response(request, history, result)
+
+
+async def stream_chat_events(request: ChatRequest) -> AsyncIterator[dict[str, str]]:
+    """Yield structured chat progress events for SSE clients."""
+    history = _get_history(request.session_id)
+    llm = get_llm()
+    graph = build_travel_agent(llm)
+    result: dict[str, Any] = {
+        "response": AIMessage(content=""),
+        "task_plan": None,
+        "itinerary": None,
+        "itinerary_md": None,
+    }
+
+    yield {"event": "thinking", "data": "{}"}
+
+    async for update in graph.astream(
+        _build_initial_state(request.message, history if history else None),
+        stream_mode="updates",
+    ):
+        node_name, payload = next(iter(update.items()))
+
+        if node_name == "decompose":
+            task_plan = payload.get("task_plan")
+            if task_plan is not None:
+                result["task_plan"] = task_plan
+                yield {
+                    "event": "plan_ready",
+                    "data": ChatResponse(
+                        reply="",
+                        task_plan=task_plan,
+                        session_id=request.session_id,
+                    ).model_dump_json(include={"task_plan", "session_id"}),
+                }
+            continue
+
+        if node_name == "execute":
+            response_msg = _last_ai_message(payload.get("messages"))
+            if response_msg is not None:
+                result["response"] = response_msg
+                for tool_call in response_msg.tool_calls:
+                    yield {
+                        "event": "tool_started",
+                        "data": json.dumps(
+                            {
+                                "tool": tool_call.get("name"),
+                                "args": tool_call.get("args", {}),
+                            }
+                        ),
+                    }
+            continue
+
+        if node_name == "tools":
+            for tool_message in payload.get("messages", []):
+                yield {
+                    "event": "tool_finished",
+                    "data": json.dumps(_tool_payload(tool_message)),
+                }
+            continue
+
+        if node_name == "synthesise":
+            response_msg = _last_ai_message(payload.get("messages"))
+            if response_msg is not None:
+                result["response"] = response_msg
+            result["itinerary"] = payload.get("itinerary")
+            result["itinerary_md"] = payload.get("itinerary_md")
+
+    response = _finalize_chat_response(request, history, result)
+    yield {
+        "event": "done",
+        "data": response.model_dump_json(),
+    }
 
 
 # ── Save handler ────────────────────────────────────────────────────

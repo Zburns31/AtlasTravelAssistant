@@ -1,6 +1,6 @@
 """Profile persistence — load/save UserProfile from ~/.atlas/.
 
-Lives in the domain layer so any consumer (Dash UI, FastAPI routes,
+Lives in the domain layer so any consumer (FastAPI routes,
 tests) can use the same persistence without coupling to a UI framework.
 """
 

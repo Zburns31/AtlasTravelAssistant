@@ -1,12 +1,12 @@
 import { Badge } from "@/components/ui/Badge";
 import { SOURCE_LABEL } from "@/lib/categoryStyles";
-import { fmtMoney } from "@/lib/format";
+import { fmtDate, fmtMoney } from "@/lib/format";
 import type { ItineraryDay } from "@/lib/types";
 import { ActivityCard } from "./ActivityCard";
 import { TravelConnector } from "./TravelConnector";
 
 function dayLabel(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return fmtDate(iso, {
     weekday: "short",
     month: "short",
     day: "numeric",

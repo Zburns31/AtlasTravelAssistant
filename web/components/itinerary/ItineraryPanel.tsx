@@ -20,6 +20,9 @@ const TABS = [
 
 export function ItineraryPanel() {
   const itinerary = useChatStore((s) => s.itinerary);
+  const taskPlan = useChatStore((s) => s.taskPlan);
+  const toolProgress = useChatStore((s) => s.toolProgress);
+  const status = useChatStore((s) => s.status);
   const sessionId = useChatStore((s) => s.sessionId);
   const activeTab = useChatStore((s) => s.activeTab);
   const setActiveTab = useChatStore((s) => s.setActiveTab);
@@ -90,7 +93,81 @@ export function ItineraryPanel() {
 
       <div className="flex-1 overflow-y-auto px-6 py-4 scroll-thin">
         {!itinerary ? (
-          <EmptyState />
+          taskPlan.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <section className="max-w-3xl">
+              <div className="mb-6 rounded-[24px] border border-subtle-ash bg-white p-5 shadow-card">
+                <div className="flex items-center justify-between gap-4 mb-3">
+                  <div>
+                    <h3 className="text-[18px] font-semibold text-deep-black">
+                      Building your trip plan
+                    </h3>
+                    <p className="text-[13px] text-midtone-gray mt-1">
+                      Atlas is drafting the high-level plan first, then filling it in with research.
+                    </p>
+                  </div>
+                  <span className="text-[11px] uppercase tracking-wide text-midtone-gray">
+                    {status === "thinking" ? "In progress" : "Draft"}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {taskPlan.map((step) => (
+                    <div
+                      key={step.step}
+                      className="rounded-[18px] border border-subtle-ash bg-snow px-4 py-3"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-soft-sand text-[11px] font-semibold text-deep-black">
+                          {step.step}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[14px] font-medium text-deep-black">
+                            {step.task}
+                          </div>
+                          {step.notes && (
+                            <p className="mt-1 text-[12px] text-midtone-gray">
+                              {step.notes}
+                            </p>
+                          )}
+                          {step.tools && step.tools.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {step.tools.map((tool) => (
+                                <span
+                                  key={tool}
+                                  className="rounded-full border border-subtle-ash px-2 py-1 text-[11px] text-midtone-gray"
+                                >
+                                  {tool}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {toolProgress.length > 0 && (
+                <section className="rounded-[24px] border border-subtle-ash bg-white p-5 shadow-card">
+                  <h4 className="text-[12px] uppercase tracking-wide text-midtone-gray mb-3">
+                    Live research
+                  </h4>
+                  <div className="space-y-3">
+                    {toolProgress.slice(-6).map((event, index) => (
+                      <div key={`${event.tool}-${index}`} className="text-[13px] text-deep-black">
+                        <div className="font-medium">{event.tool ?? "Tool update"}</div>
+                        {event.content_preview && (
+                          <p className="mt-1 text-midtone-gray">{event.content_preview}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </section>
+          )
         ) : activeTab === "itinerary" ? (
           <>
             {itinerary.flights.length > 0 && (

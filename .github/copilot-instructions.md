@@ -30,7 +30,7 @@ Repeat the cycle until the task is complete and all acceptance criteria are met.
 
 ## Project Overview
 
-Atlas is a Python-based AI travel assistant that helps users plan trips, discover destinations, and manage itineraries. It is designed to be LLM-agnostic, supporting multiple providers (OpenAI, Anthropic, Google, Ollama, etc.) via a unified interface. The initial deployment target is a **web application** built with Plotly Dash.
+Atlas is a Python-based AI travel assistant that helps users plan trips, discover destinations, and manage itineraries. It is designed to be LLM-agnostic, supporting multiple providers (OpenAI, Anthropic, Google, Ollama, etc.) via a unified interface. The deployment target is a **web application** built with Next.js and backed by FastAPI.
 
 ## Tech Stack
 
@@ -39,7 +39,8 @@ Atlas is a Python-based AI travel assistant that helps users plan trips, discove
 - **LLM orchestration:** LangChain (LCEL) + **LangGraph** — `BaseChatModel` is the universal interface; agent flow is a `StateGraph`
 - **LLM Router:** `src/atlas/llm/router.py` — `ChatLiteLLM` instance via [LiteLLM](https://docs.litellm.ai). Switch models by changing `ATLAS_LLM_MODEL` (e.g. `openai/gpt-4o`, `anthropic/claude-3-5-sonnet`, `groq/llama-3.3-70b-versatile`). Set the provider's API key as an env var (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, etc.).
 - **Structured data:** Pydantic v2 — all domain models, request/response schemas, and tool I/O
-- **Frontend:** Plotly Dash with `dash-bootstrap-components`
+- **Frontend:** Next.js 15 (App Router) + React 19 + TypeScript + Tailwind CSS
+- **API:** FastAPI + Uvicorn with REST + SSE routes for the web client
 - **Package layout:** `src/atlas/` (src-layout)
 
 ## Architecture Principles
@@ -47,7 +48,7 @@ Atlas is a Python-based AI travel assistant that helps users plan trips, discove
 - **LLM-agnostic via Router:** All model calls go through `get_llm()` in `src/atlas/llm/router.py`, which returns a `BaseChatModel`. Never import `ChatLiteLLM`, `ChatOpenAI`, `ChatAnthropic`, etc. outside of `src/atlas/llm/`.
 - **Tool calling with `@tool`:** Define tools as plain Python functions with LangChain's `@tool` decorator. They must be testable without live API keys (mock `httpx`).
 - **Agent orchestration:** The LangGraph `StateGraph` in `src/atlas/agents/travel_agent.py` wires the LLM + tools into an `agent → tools → agent` loop. Domain functions invoke the agent — routes do not.
-- **Separation of concerns:** Dash callbacks → domain functions → agent/tools. No LLM calls in UI callbacks directly.
+- **Separation of concerns:** Next.js client/hooks → FastAPI routes/handlers → domain functions → agent/tools. No LLM calls in UI components directly.
 - **Testability:** Mock `BaseChatModel` at the `get_llm()` boundary. Agent tests mock `llm.invoke`. HTTP tool tests mock `httpx`.
 
 ## Module Conventions
@@ -57,8 +58,8 @@ Atlas is a Python-based AI travel assistant that helps users plan trips, discove
 - `src/atlas/agents/` — LangGraph `StateGraph` agent (`travel_agent.py`) + system prompt (`prompts.py`)
 - `src/atlas/domain/` — Pydantic v2 domain models and business/orchestration logic
 - `src/atlas/components/` — Serializable Pydantic components for structured travel data
-- `src/atlas/api/` — Internal API handlers (Pydantic request/response, no direct LLM calls)
-- `src/atlas/ui/` — Dash application (`app.py`, `layout.py`, `callbacks.py`, `ui/components/`)
+- `src/atlas/api/` — FastAPI handlers and routes (Pydantic request/response, no direct LLM calls)
+- `web/` — Next.js application, UI components, hooks, and typed API client
 
 ## Coding Style
 

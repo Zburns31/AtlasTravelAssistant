@@ -147,15 +147,15 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     atlas_debug: bool = Field(
         default=False,
-        description="Enable debug mode (verbose logging, Dash debug server).",
+        description="Enable debug mode (verbose logging, API autoreload).",
     )
     atlas_host: str = Field(
         default="127.0.0.1",
-        description="Host for the Dash development server.",
+        description="Host for the Atlas API development server.",
     )
     atlas_port: int = Field(
         default=8050,
-        description="Port for the Dash development server.",
+        description="Port for the Atlas API development server.",
     )
 
 

@@ -62,6 +62,7 @@ def test_health(client: TestClient) -> None:
 def test_post_chat_invokes_handler(client: TestClient, sample_itinerary):
     fake_response = ChatResponse(
         reply="Done!",
+        task_plan=[{"step": 1, "task": "Plan Lisbon", "tools": ["search_web"]}],
         itinerary=sample_itinerary,
         itinerary_md="# Lisbon",
         session_id="s1",
@@ -75,6 +76,7 @@ def test_post_chat_invokes_handler(client: TestClient, sample_itinerary):
     body = resp.json()
     assert body["reply"] == "Done!"
     assert body["session_id"] == "s1"
+    assert body["task_plan"][0]["task"] == "Plan Lisbon"
     assert body["itinerary"]["destination"]["name"] == "Lisbon"
 
 
@@ -89,6 +91,30 @@ def test_get_history_empty(client: TestClient) -> None:
     resp = client.get("/api/history/missing")
     assert resp.status_code == 200
     assert resp.json() == {"session_id": "missing", "messages": []}
+
+
+def test_post_chat_stream_emits_sse_events(client: TestClient) -> None:
+    async def fake_stream(_request):
+        yield {"event": "thinking", "data": "{}"}
+        yield {
+            "event": "plan_ready",
+            "data": '{"task_plan": [{"step": 1, "task": "Plan Lisbon"}], "session_id": "s1"}',
+        }
+        yield {"event": "done", "data": '{"reply": "Done!"}'}
+
+    with patch("atlas.api.routes.stream.stream_chat_events", fake_stream):
+        with client.stream(
+            "POST",
+            "/api/chat/stream",
+            json={"message": "Plan Lisbon", "session_id": "s1"},
+        ) as resp:
+            body = "".join(resp.iter_text())
+
+    assert resp.status_code == 200
+    assert "event: thinking" in body
+    assert "event: plan_ready" in body
+    assert "Plan Lisbon" in body
+    assert "event: done" in body
 
 
 # ── Itinerary ───────────────────────────────────────────────────────

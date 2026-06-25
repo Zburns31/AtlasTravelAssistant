@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 
 from atlas.domain.models import Itinerary
 
-
 # ── Chat / Conversation ─────────────────────────────────────────────
 
 
@@ -32,6 +31,10 @@ class ChatResponse(BaseModel):
     """The assistant's reply, plus any structured itinerary produced."""
 
     reply: str = Field(..., description="Markdown-formatted assistant reply.")
+    task_plan: list[dict[str, object]] | None = Field(
+        default=None,
+        description="Ordered high-level agent task plan, if one was produced.",
+    )
     itinerary: Itinerary | None = Field(
         default=None,
         description="Validated structured itinerary, if one was produced.",

@@ -69,8 +69,6 @@ def main() -> None:
     from atlas.config import get_settings
 
     settings = get_settings()
-    # Reuse atlas_host but use port 8000 by default for the API so it
-    # doesn't collide with the legacy Dash server on 8050.
     uvicorn.run(
         "atlas.api.server:app",
         host=settings.atlas_host,

@@ -34,7 +34,6 @@ from atlas.domain.parsing import (
     parse_agent_result,
 )
 
-
 # ── Sample LLM output fixture ──────────────────────────────────────
 
 
@@ -332,7 +331,43 @@ class TestBuildItinerary:
         out = _sample_itinerary_out()
         out.days.append(DayOut(date="bad-date"))
         itinerary = build_itinerary(out)
-        assert len(itinerary.days) == 1
+        assert len(itinerary.days) == 2
+        assert itinerary.days[1].date == date(2025, 4, 2)
+
+    def test_enriched_query_dates_override_llm_dates(self) -> None:
+        out = _sample_itinerary_out()
+        out.start_date = "2024-01-01"
+        out.end_date = "2024-01-04"
+
+        itinerary = build_itinerary(
+            out,
+            enriched_query={
+                "start_date": "2025-04-10",
+                "end_date": "2025-04-13",
+            },
+        )
+
+        assert itinerary.start_date == date(2025, 4, 10)
+        assert itinerary.end_date == date(2025, 4, 13)
+        assert itinerary.days[0].date == date(2025, 4, 10)
+
+    def test_day_dates_normalized_to_trip_window(self) -> None:
+        out = _sample_itinerary_out()
+        out.start_date = "2025-04-10"
+        out.end_date = "2025-04-13"
+        out.days = [
+            DayOut(date="2024-01-01"),
+            DayOut(date="2024-01-09"),
+            DayOut(date="2024-05-01"),
+        ]
+
+        itinerary = build_itinerary(out)
+
+        assert [day.date for day in itinerary.days] == [
+            date(2025, 4, 10),
+            date(2025, 4, 11),
+            date(2025, 4, 12),
+        ]
 
     def test_empty_notes_filtered(self) -> None:
         out = ItineraryOut(
