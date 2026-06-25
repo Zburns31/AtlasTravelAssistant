@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -11,10 +11,12 @@ from langchain_core.messages import AIMessage
 
 from atlas.api.handlers import (
     _itineraries,
+    _plans,
     _sessions,
     clear_session,
     get_chat_history,
     get_current_itinerary,
+    get_current_plan,
     handle_chat,
     handle_export,
     handle_save,
@@ -28,8 +30,13 @@ from atlas.api.schemas import (
     SaveResponse,
 )
 from atlas.domain.models import (
+    Accommodation,
+    Activity,
+    ActivityCategory,
     Destination,
+    Flight,
     Itinerary,
+    ItineraryDay,
     TripPreferences,
 )
 
@@ -41,9 +48,11 @@ def _clear_sessions():
     """Ensure clean session state between tests."""
     _sessions.clear()
     _itineraries.clear()
+    _plans.clear()
     yield
     _sessions.clear()
     _itineraries.clear()
+    _plans.clear()
 
 
 @pytest.fixture
@@ -55,6 +64,43 @@ def sample_itinerary() -> Itinerary:
         preferences=TripPreferences(
             traveler_count=2, budget_usd=3000.0, interests=["temples"]
         ),
+        flights=[
+            Flight(
+                airline="JAL",
+                flight_number="JL61",
+                departure_airport="SFO",
+                arrival_airport="KIX",
+                departure_time=datetime(2025, 4, 1, 9, 0),
+                arrival_time=datetime(2025, 4, 2, 13, 30),
+                duration_hours=11.5,
+                estimated_cost_usd=1240.0,
+            )
+        ],
+        accommodations=[
+            Accommodation(
+                name="Gion Corner Hotel",
+                star_rating=4.0,
+                nightly_rate_usd=210.0,
+                total_cost_usd=840.0,
+                check_in=date(2025, 4, 1),
+                check_out=date(2025, 4, 5),
+                location="Gion",
+                description="Walkable base near temples",
+            )
+        ],
+        days=[
+            ItineraryDay(
+                date=date(2025, 4, 1),
+                activities=[
+                    Activity(
+                        title="Fushimi Inari sunrise walk",
+                        description="Start early before the crowds.",
+                        duration_hours=2.0,
+                        category=ActivityCategory.SIGHTSEEING,
+                    )
+                ],
+            )
+        ],
     )
 
 
@@ -76,6 +122,7 @@ class TestSchemas:
         data = resp.model_dump()
         assert data["reply"] == "Here is your trip!"
         assert data["task_plan"] is None
+        assert data["incremental_plan"] is None
         assert data["itinerary"] is None
 
     def test_save_response(self) -> None:
@@ -117,7 +164,9 @@ class TestHandleChat:
         assert isinstance(response, ChatResponse)
         assert "Kyoto" in response.reply
         assert response.task_plan is not None
-        assert response.task_plan[0]["task"] == "Research Kyoto"
+        assert response.task_plan[0].task == "Research Kyoto"
+        assert response.incremental_plan is not None
+        assert response.incremental_plan.steps[0].task == "Research Kyoto"
         mock_invoke.assert_called_once()
 
     @patch("atlas.api.handlers.invoke_agent")
@@ -140,11 +189,14 @@ class TestHandleChat:
 
         assert response.itinerary is not None
         assert response.task_plan is not None
-        assert response.task_plan[0]["task"] == "Plan Kyoto"
+        assert response.task_plan[0].task == "Plan Kyoto"
+        assert response.incremental_plan is not None
+        assert response.incremental_plan.status == "completed"
         assert response.itinerary.destination.name == "Kyoto"
         assert response.itinerary_md == "# Trip to Kyoto\n..."
         # Should be cached
         assert get_current_itinerary("default") is sample_itinerary
+        assert get_current_plan("default") is not None
 
     @patch("atlas.api.handlers.invoke_agent")
     @patch("atlas.api.handlers.get_llm")
@@ -173,11 +225,21 @@ class TestStreamChatEvents:
         self,
         mock_get_llm,
         mock_build_agent,
+        sample_itinerary,
     ) -> None:
         mock_get_llm.return_value = MagicMock()
 
         class FakeGraph:
             async def astream(self, *_args, **_kwargs):
+                yield {
+                    "enrich": {
+                        "messages": [],
+                        "parsed_query": {
+                            "destination": "Kyoto",
+                            "duration_days": 1,
+                        },
+                    }
+                }
                 yield {
                     "decompose": {
                         "messages": [],
@@ -219,7 +281,7 @@ class TestStreamChatEvents:
                 yield {
                     "synthesise": {
                         "messages": [AIMessage(content="# Kyoto itinerary")],
-                        "itinerary": None,
+                        "itinerary": sample_itinerary,
                         "itinerary_md": "# Kyoto itinerary",
                     }
                 }
@@ -235,19 +297,33 @@ class TestStreamChatEvents:
         assert [event["event"] for event in events] == [
             "thinking",
             "plan_ready",
-            "tool_started",
-            "tool_finished",
+            "plan_step_started",
+            "plan_step_completed",
+            "plan_step_started",
+            "plan_step_completed",
+            "plan_step_started",
+            "plan_step_completed",
             "done",
         ]
-        assert "Research Kyoto" in events[1]["data"]
-        assert "search_web" in events[2]["data"]
-        assert "Top Kyoto attractions" in events[3]["data"]
-        assert "Kyoto itinerary" in events[4]["data"]
+        assert "Review flights for Kyoto" in events[1]["data"]
+        assert "card-flight" in events[2]["data"]
+        assert "card-accommodation" in events[4]["data"]
+        assert "card-day-1" in events[6]["data"]
+        assert "Kyoto itinerary" in events[8]["data"]
 
         history = get_chat_history("s1")
         assert len(history) == 2
         assert history[0]["role"] == "user"
         assert history[1]["role"] == "assistant"
+        plan = get_current_plan("s1")
+        assert plan is not None
+        assert plan.status == "completed"
+        assert [step.kind for step in plan.steps] == [
+            "flight",
+            "accommodation",
+            "day",
+        ]
+        assert plan.steps[0].preview_lines[0] == "SFO -> KIX"
 
 
 # ── Save/Export handler tests ────────────────────────────────────────

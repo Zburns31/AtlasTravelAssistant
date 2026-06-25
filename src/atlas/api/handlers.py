@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, AsyncIterator
+from datetime import date, datetime, timezone
+from typing import Any, AsyncIterator, Literal
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
@@ -18,7 +19,11 @@ from atlas.api.schemas import (
     ChatRequest,
     ChatResponse,
     ExportResponse,
+    IncrementalPlan,
+    IncrementalPlanStep,
+    PlanDraftDay,
     SaveResponse,
+    TaskPlanItem,
 )
 from atlas.domain.itinerary import (
     export_markdown_to_disk,
@@ -35,10 +40,355 @@ logger = logging.getLogger(__name__)
 # can be swapped in later without changing the handler signatures.
 _sessions: dict[str, list[BaseMessage]] = {}
 _itineraries: dict[str, Itinerary] = {}  # session_id → latest itinerary
+_plans: dict[str, IncrementalPlan] = {}
 
 
 def _get_history(session_id: str) -> list[BaseMessage]:
     return _sessions.setdefault(session_id, [])
+
+
+def _touch_plan(plan: IncrementalPlan, status: str | None = None) -> None:
+    if status is not None:
+        plan.status = status
+    plan.updated_at = datetime.now(timezone.utc)
+
+
+def _coerce_task_plan(task_plan: Any) -> list[TaskPlanItem]:
+    if not task_plan:
+        return []
+    items: list[TaskPlanItem] = []
+    for item in task_plan:
+        if isinstance(item, TaskPlanItem):
+            items.append(item)
+        else:
+            items.append(TaskPlanItem.model_validate(item))
+    return items
+
+
+def _estimate_trip_day_count(parsed_query: dict[str, Any] | None) -> int | None:
+    if not parsed_query:
+        return None
+
+    duration_days = parsed_query.get("duration_days")
+    if isinstance(duration_days, int) and duration_days > 0:
+        return duration_days
+
+    start_date = parsed_query.get("start_date")
+    end_date = parsed_query.get("end_date")
+    if not isinstance(start_date, str) or not isinstance(end_date, str):
+        return None
+
+    try:
+        start = date.fromisoformat(start_date)
+        end = date.fromisoformat(end_date)
+    except ValueError:
+        return None
+
+    day_count = (end - start).days
+    return day_count if day_count > 0 else None
+
+
+def _summarise_flight_card(itinerary: Itinerary | None) -> list[str]:
+    if itinerary is None or not itinerary.flights:
+        return ["Routes are being finalized."]
+
+    flight = itinerary.flights[0]
+    summary = [
+        f"{flight.departure_airport} -> {flight.arrival_airport}",
+        f"{flight.airline} {flight.flight_number}",
+    ]
+    if flight.estimated_cost_usd is not None:
+        summary.append(f"Estimated ${flight.estimated_cost_usd:,.0f}")
+    return summary
+
+
+def _summarise_accommodation_card(itinerary: Itinerary | None) -> list[str]:
+    if itinerary is None or not itinerary.accommodations:
+        return ["Stay recommendation is being finalized."]
+
+    accommodation = itinerary.accommodations[0]
+    summary = [accommodation.name]
+    if accommodation.location:
+        summary.append(accommodation.location)
+    summary.append(
+        f"{accommodation.check_in.isoformat()} to {accommodation.check_out.isoformat()}"
+    )
+    return summary
+
+
+def _summarise_day_card(day_index: int, itinerary: Itinerary | None) -> list[str]:
+    if itinerary is None or day_index > len(itinerary.days):
+        return ["Day plan is being assembled."]
+
+    day = itinerary.days[day_index - 1]
+    highlights = ", ".join(activity.title for activity in day.activities[:3])
+    summary = [day.date.isoformat()]
+    if highlights:
+        if len(day.activities) > 3:
+            highlights = f"{highlights} +{len(day.activities) - 3} more"
+        summary.append(highlights)
+    else:
+        summary.append("Activities are being finalized.")
+    return summary
+
+
+def _build_generic_plan_steps(
+    task_plan: list[TaskPlanItem],
+) -> list[IncrementalPlanStep]:
+    return [
+        IncrementalPlanStep(
+            id=f"step-{item.step}",
+            step=item.step,
+            task=item.task,
+            kind="generic",
+            tools=list(item.tools),
+            notes=item.notes,
+        )
+        for item in task_plan
+    ]
+
+
+def _build_query_plan_steps(
+    parsed_query: dict[str, Any] | None,
+) -> list[IncrementalPlanStep]:
+    destination = parsed_query.get("destination") if parsed_query else None
+    day_count = _estimate_trip_day_count(parsed_query)
+
+    steps = [
+        IncrementalPlanStep(
+            id="card-flight",
+            step=1,
+            task=(
+                f"Review flights for {destination}"
+                if isinstance(destination, str) and destination.strip()
+                else "Review flight options"
+            ),
+            kind="flight",
+            preview_lines=["Flight options are being researched."],
+        ),
+        IncrementalPlanStep(
+            id="card-accommodation",
+            step=2,
+            task=(
+                f"Shortlist stays in {destination}"
+                if isinstance(destination, str) and destination.strip()
+                else "Shortlist accommodation"
+            ),
+            kind="accommodation",
+            preview_lines=["Stay options are being narrowed down."],
+        ),
+    ]
+
+    if day_count is not None:
+        for day_index in range(1, day_count + 1):
+            steps.append(
+                IncrementalPlanStep(
+                    id=f"card-day-{day_index}",
+                    step=len(steps) + 1,
+                    task=f"Craft day {day_index}",
+                    kind="day",
+                    day_index=day_index,
+                    preview_lines=["Day-by-day flow is being assembled."],
+                )
+            )
+
+    return steps
+
+
+def _build_itinerary_plan_steps(itinerary: Itinerary) -> list[IncrementalPlanStep]:
+    day_count = len(itinerary.days)
+    if day_count == 0:
+        day_count = (itinerary.end_date - itinerary.start_date).days
+
+    steps = [
+        IncrementalPlanStep(
+            id="card-flight",
+            step=1,
+            task="Finalize flights",
+            kind="flight",
+            preview_lines=_summarise_flight_card(itinerary),
+        ),
+        IncrementalPlanStep(
+            id="card-accommodation",
+            step=2,
+            task="Finalize accommodation",
+            kind="accommodation",
+            preview_lines=_summarise_accommodation_card(itinerary),
+        ),
+    ]
+
+    for day_index in range(1, max(day_count, 0) + 1):
+        steps.append(
+            IncrementalPlanStep(
+                id=f"card-day-{day_index}",
+                step=len(steps) + 1,
+                task=f"Finalize day {day_index}",
+                kind="day",
+                day_index=day_index,
+                preview_lines=_summarise_day_card(day_index, itinerary),
+            )
+        )
+
+    return steps
+
+
+def _build_incremental_plan(
+    session_id: str,
+    steps: list[IncrementalPlanStep],
+    *,
+    status: Literal[
+        "planning", "researching", "synthesising", "completed"
+    ] = "planning",
+) -> IncrementalPlan:
+    return IncrementalPlan(
+        session_id=session_id,
+        status=status,
+        steps=steps,
+    )
+
+
+def _set_session_plan(
+    session_id: str,
+    task_plan: list[TaskPlanItem] | None = None,
+    *,
+    parsed_query: dict[str, Any] | None = None,
+    itinerary: Itinerary | None = None,
+    status: Literal[
+        "planning", "researching", "synthesising", "completed"
+    ] = "planning",
+) -> IncrementalPlan | None:
+    if itinerary is not None:
+        steps = _build_itinerary_plan_steps(itinerary)
+    elif parsed_query is not None:
+        steps = _build_query_plan_steps(parsed_query)
+    elif task_plan:
+        steps = _build_generic_plan_steps(task_plan)
+    else:
+        _plans.pop(session_id, None)
+        return None
+
+    if not steps:
+        _plans.pop(session_id, None)
+        return None
+
+    plan = _build_incremental_plan(session_id, steps, status=status)
+    _plans[session_id] = plan
+    return plan
+
+
+def _get_current_plan(session_id: str) -> IncrementalPlan | None:
+    return _plans.get(session_id)
+
+
+def _begin_synthesis(session_id: str) -> IncrementalPlan | None:
+    plan = _get_current_plan(session_id)
+    if plan is None or not plan.steps:
+        return None
+    for step in plan.steps:
+        step.status = "planned"
+    _touch_plan(plan, status="synthesising")
+    return plan
+
+
+def _replace_day_steps_from_itinerary(
+    plan: IncrementalPlan,
+    itinerary: Itinerary,
+) -> None:
+    static_steps = [step for step in plan.steps if step.kind != "day"]
+    day_steps = [
+        step for step in _build_itinerary_plan_steps(itinerary) if step.kind == "day"
+    ]
+    plan.steps = static_steps + day_steps
+    for index, step in enumerate(plan.steps, start=1):
+        step.step = index
+
+
+def _set_step_status(
+    session_id: str,
+    step_id: str,
+    status: str,
+) -> IncrementalPlanStep | None:
+    plan = _get_current_plan(session_id)
+    if plan is None:
+        return None
+    for step in plan.steps:
+        if step.id == step_id:
+            step.status = status
+            _touch_plan(plan, status="synthesising")
+            return step
+    return None
+
+
+def _complete_card_step(
+    session_id: str,
+    step_id: str,
+    itinerary: Itinerary | None,
+) -> IncrementalPlanStep | None:
+    plan = _get_current_plan(session_id)
+    if plan is None:
+        return None
+
+    for step in plan.steps:
+        if step.id != step_id:
+            continue
+        if step.kind == "flight":
+            step.preview_lines = _summarise_flight_card(itinerary)
+        elif step.kind == "accommodation":
+            step.preview_lines = _summarise_accommodation_card(itinerary)
+        elif step.kind == "day":
+            step.preview_lines = _summarise_day_card(step.day_index or 1, itinerary)
+        step.status = "completed"
+        _touch_plan(plan, status="synthesising")
+        return step
+
+    return None
+
+
+def _attach_draft_days(
+    session_id: str,
+    itinerary: Itinerary | None,
+) -> tuple[IncrementalPlanStep | None, list[PlanDraftDay]]:
+    if itinerary is None:
+        return None, []
+    plan = _get_current_plan(session_id)
+    if plan is None or not plan.steps:
+        return None, []
+    final_step = plan.steps[-1]
+    final_step.draft_days = []
+    drafts: list[PlanDraftDay] = []
+    for day_index, day in enumerate(itinerary.days, start=1):
+        draft = PlanDraftDay(
+            step_id=final_step.id,
+            day_index=day_index,
+            day=day,
+        )
+        final_step.draft_days.append(draft)
+        drafts.append(draft)
+    _touch_plan(plan, status="synthesising")
+    return final_step, drafts
+
+
+def _complete_plan(
+    session_id: str,
+    task_plan: list[TaskPlanItem] | None,
+    itinerary: Itinerary | None = None,
+) -> IncrementalPlan | None:
+    plan = _get_current_plan(session_id)
+    if itinerary is not None:
+        plan = _set_session_plan(
+            session_id,
+            task_plan,
+            itinerary=itinerary,
+            status="completed",
+        )
+    elif plan is None and task_plan:
+        plan = _set_session_plan(session_id, task_plan, status="completed")
+    if plan is None:
+        return None
+    for step in plan.steps:
+        step.status = "completed"
+    _touch_plan(plan, status="completed")
+    return plan
 
 
 def _build_initial_state(
@@ -120,12 +470,27 @@ def _finalize_chat_response(
     result: dict[str, Any],
 ) -> ChatResponse:
     response_msg = result["response"]
-    task_plan = result.get("task_plan")
+    task_plan = _coerce_task_plan(result.get("task_plan"))
     itinerary: Itinerary | None = result.get("itinerary")
     itinerary_md: str | None = result.get("itinerary_md")
+    plan: IncrementalPlan | None = result.get("incremental_plan")
 
     if itinerary is not None:
         _itineraries[request.session_id] = itinerary
+
+    if plan is None:
+        plan = _get_current_plan(request.session_id)
+    if itinerary is not None:
+        plan = _set_session_plan(
+            request.session_id,
+            task_plan,
+            itinerary=itinerary,
+            status="completed",
+        )
+    elif plan is None and task_plan:
+        plan = _set_session_plan(request.session_id, task_plan, status="completed")
+    if plan is not None:
+        plan = _complete_plan(request.session_id, task_plan, itinerary)
 
     raw_content = _normalise_message_content(response_msg.content)
     reply = itinerary_md or raw_content
@@ -136,7 +501,8 @@ def _finalize_chat_response(
 
     return ChatResponse(
         reply=reply,
-        task_plan=task_plan,
+        task_plan=task_plan or None,
+        incremental_plan=plan,
         itinerary=itinerary,
         itinerary_md=itinerary_md,
         session_id=request.session_id,
@@ -172,6 +538,7 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
     4. Return structured plan + itinerary data if available.
     """
     history = _get_history(request.session_id)
+    _plans.pop(request.session_id, None)
 
     llm = get_llm()
     result = invoke_agent(
@@ -185,11 +552,13 @@ def handle_chat(request: ChatRequest) -> ChatResponse:
 async def stream_chat_events(request: ChatRequest) -> AsyncIterator[dict[str, str]]:
     """Yield structured chat progress events for SSE clients."""
     history = _get_history(request.session_id)
+    _plans.pop(request.session_id, None)
     llm = get_llm()
     graph = build_travel_agent(llm)
     result: dict[str, Any] = {
         "response": AIMessage(content=""),
         "task_plan": None,
+        "incremental_plan": None,
         "itinerary": None,
         "itinerary_md": None,
     }
@@ -202,42 +571,53 @@ async def stream_chat_events(request: ChatRequest) -> AsyncIterator[dict[str, st
     ):
         node_name, payload = next(iter(update.items()))
 
-        if node_name == "decompose":
-            task_plan = payload.get("task_plan")
-            if task_plan is not None:
-                result["task_plan"] = task_plan
+        if node_name == "enrich":
+            parsed_query = payload.get("parsed_query")
+            plan = _set_session_plan(
+                request.session_id,
+                parsed_query=parsed_query if isinstance(parsed_query, dict) else None,
+            )
+            if plan is not None:
+                result["incremental_plan"] = plan
                 yield {
                     "event": "plan_ready",
                     "data": ChatResponse(
                         reply="",
-                        task_plan=task_plan,
+                        task_plan=None,
+                        incremental_plan=plan,
                         session_id=request.session_id,
-                    ).model_dump_json(include={"task_plan", "session_id"}),
+                    ).model_dump_json(
+                        include={"task_plan", "incremental_plan", "session_id"}
+                    ),
                 }
+            continue
+
+        if node_name == "decompose":
+            task_plan = _coerce_task_plan(payload.get("task_plan"))
+            if task_plan:
+                result["task_plan"] = task_plan
+                if result["incremental_plan"] is None:
+                    result["incremental_plan"] = _set_session_plan(
+                        request.session_id,
+                        task_plan,
+                    )
             continue
 
         if node_name == "execute":
             response_msg = _last_ai_message(payload.get("messages"))
             if response_msg is not None:
                 result["response"] = response_msg
-                for tool_call in response_msg.tool_calls:
-                    yield {
-                        "event": "tool_started",
-                        "data": json.dumps(
-                            {
-                                "tool": tool_call.get("name"),
-                                "args": tool_call.get("args", {}),
-                            }
-                        ),
-                    }
+                plan = _get_current_plan(request.session_id)
+                if plan is not None:
+                    _touch_plan(plan, status="researching")
+                    result["incremental_plan"] = plan
             continue
 
         if node_name == "tools":
-            for tool_message in payload.get("messages", []):
-                yield {
-                    "event": "tool_finished",
-                    "data": json.dumps(_tool_payload(tool_message)),
-                }
+            plan = _get_current_plan(request.session_id)
+            if plan is not None:
+                _touch_plan(plan, status="researching")
+                result["incremental_plan"] = plan
             continue
 
         if node_name == "synthesise":
@@ -246,6 +626,50 @@ async def stream_chat_events(request: ChatRequest) -> AsyncIterator[dict[str, st
                 result["response"] = response_msg
             result["itinerary"] = payload.get("itinerary")
             result["itinerary_md"] = payload.get("itinerary_md")
+            itinerary = result["itinerary"]
+            if itinerary is not None:
+                plan = _get_current_plan(request.session_id)
+                if plan is None:
+                    plan = _set_session_plan(
+                        request.session_id,
+                        result.get("task_plan"),
+                        itinerary=itinerary,
+                    )
+                if plan is not None:
+                    _replace_day_steps_from_itinerary(plan, itinerary)
+                    _begin_synthesis(request.session_id)
+                    result["incremental_plan"] = plan
+                    for step in plan.steps:
+                        started = _set_step_status(
+                            request.session_id,
+                            step.id,
+                            "in_progress",
+                        )
+                        if started is not None:
+                            yield {
+                                "event": "plan_step_started",
+                                "data": json.dumps(
+                                    {
+                                        "session_id": request.session_id,
+                                        "step": started.model_dump(mode="json"),
+                                    }
+                                ),
+                            }
+                        completed = _complete_card_step(
+                            request.session_id,
+                            step.id,
+                            itinerary,
+                        )
+                        if completed is not None:
+                            yield {
+                                "event": "plan_step_completed",
+                                "data": json.dumps(
+                                    {
+                                        "session_id": request.session_id,
+                                        "step": completed.model_dump(mode="json"),
+                                    }
+                                ),
+                            }
 
     response = _finalize_chat_response(request, history, result)
     yield {
@@ -306,6 +730,11 @@ def get_current_itinerary(session_id: str = "default") -> Itinerary | None:
     return _itineraries.get(session_id)
 
 
+def get_current_plan(session_id: str = "default") -> IncrementalPlan | None:
+    """Return the latest incremental plan for a session, or None."""
+    return _plans.get(session_id)
+
+
 def get_chat_history(session_id: str = "default") -> list[dict[str, str]]:
     """Return chat history as simple dicts for UI rendering.
 
@@ -342,3 +771,4 @@ def clear_session(session_id: str = "default") -> None:
     """Clear chat history and cached itinerary for a session."""
     _sessions.pop(session_id, None)
     _itineraries.pop(session_id, None)
+    _plans.pop(session_id, None)

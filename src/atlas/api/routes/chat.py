@@ -5,28 +5,13 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
-from atlas.api.handlers import get_chat_history, handle_chat
-from atlas.api.schemas import ChatRequest, ChatResponse
+from atlas.api.handlers import get_chat_history, get_current_plan, handle_chat
+from atlas.api.schemas import ChatRequest, ChatResponse, HistoryMessage, HistoryResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-class HistoryMessage(BaseModel):
-    """A single chat history entry in API form."""
-
-    role: str
-    content: str
-
-
-class HistoryResponse(BaseModel):
-    """The full chat history for a session."""
-
-    session_id: str
-    messages: list[HistoryMessage]
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -46,4 +31,5 @@ def get_history(session_id: str) -> HistoryResponse:
     return HistoryResponse(
         session_id=session_id,
         messages=[HistoryMessage(**m) for m in history],
+        incremental_plan=get_current_plan(session_id),
     )

@@ -12,8 +12,8 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from atlas.api.handlers import _itineraries, _sessions
-from atlas.api.schemas import ChatResponse
+from atlas.api.handlers import _itineraries, _plans, _sessions
+from atlas.api.schemas import ChatResponse, IncrementalPlan, IncrementalPlanStep
 from atlas.api.server import create_app
 from atlas.domain.models import (
     Destination,
@@ -27,9 +27,11 @@ from atlas.domain.models import (
 def _clear_state():
     _sessions.clear()
     _itineraries.clear()
+    _plans.clear()
     yield
     _sessions.clear()
     _itineraries.clear()
+    _plans.clear()
 
 
 @pytest.fixture
@@ -60,9 +62,23 @@ def test_health(client: TestClient) -> None:
 
 
 def test_post_chat_invokes_handler(client: TestClient, sample_itinerary):
+    plan = IncrementalPlan(
+        session_id="s1",
+        status="completed",
+        steps=[
+            IncrementalPlanStep(
+                id="step-1",
+                step=1,
+                task="Plan Lisbon",
+                status="completed",
+                tools=["search_web"],
+            )
+        ],
+    )
     fake_response = ChatResponse(
         reply="Done!",
         task_plan=[{"step": 1, "task": "Plan Lisbon", "tools": ["search_web"]}],
+        incremental_plan=plan,
         itinerary=sample_itinerary,
         itinerary_md="# Lisbon",
         session_id="s1",
@@ -77,6 +93,7 @@ def test_post_chat_invokes_handler(client: TestClient, sample_itinerary):
     assert body["reply"] == "Done!"
     assert body["session_id"] == "s1"
     assert body["task_plan"][0]["task"] == "Plan Lisbon"
+    assert body["incremental_plan"]["steps"][0]["id"] == "step-1"
     assert body["itinerary"]["destination"]["name"] == "Lisbon"
 
 
@@ -90,7 +107,31 @@ def test_post_chat_handler_error_returns_500(client: TestClient) -> None:
 def test_get_history_empty(client: TestClient) -> None:
     resp = client.get("/api/history/missing")
     assert resp.status_code == 200
-    assert resp.json() == {"session_id": "missing", "messages": []}
+    assert resp.json() == {
+        "session_id": "missing",
+        "messages": [],
+        "incremental_plan": None,
+    }
+
+
+def test_get_history_includes_incremental_plan(client: TestClient) -> None:
+    _plans["s1"] = IncrementalPlan(
+        session_id="s1",
+        status="researching",
+        steps=[
+            IncrementalPlanStep(
+                id="step-1",
+                step=1,
+                task="Research Lisbon",
+                status="in_progress",
+            )
+        ],
+    )
+
+    resp = client.get("/api/history/s1")
+
+    assert resp.status_code == 200
+    assert resp.json()["incremental_plan"]["steps"][0]["task"] == "Research Lisbon"
 
 
 def test_post_chat_stream_emits_sse_events(client: TestClient) -> None:
@@ -98,7 +139,15 @@ def test_post_chat_stream_emits_sse_events(client: TestClient) -> None:
         yield {"event": "thinking", "data": "{}"}
         yield {
             "event": "plan_ready",
-            "data": '{"task_plan": [{"step": 1, "task": "Plan Lisbon"}], "session_id": "s1"}',
+            "data": '{"task_plan": null, "incremental_plan": {"session_id": "s1", "status": "planning", "steps": [{"id": "card-flight", "step": 1, "task": "Review flights for Lisbon", "kind": "flight", "status": "planned", "day_index": null, "preview_lines": ["Flight options are being researched."], "tools": [], "notes": null, "findings": [], "tool_updates": [], "draft_days": []}], "updated_at": "2026-06-25T00:00:00Z"}, "session_id": "s1"}',
+        }
+        yield {
+            "event": "plan_step_started",
+            "data": '{"session_id": "s1", "step": {"id": "card-flight", "step": 1, "task": "Review flights for Lisbon", "kind": "flight", "status": "in_progress", "day_index": null, "preview_lines": ["Flight options are being researched."], "tools": [], "notes": null, "findings": [], "tool_updates": [], "draft_days": []}}',
+        }
+        yield {
+            "event": "plan_step_completed",
+            "data": '{"session_id": "s1", "step": {"id": "card-flight", "step": 1, "task": "Review flights for Lisbon", "kind": "flight", "status": "completed", "day_index": null, "preview_lines": ["LIS -> OPO"], "tools": [], "notes": null, "findings": [], "tool_updates": [], "draft_days": []}}',
         }
         yield {"event": "done", "data": '{"reply": "Done!"}'}
 
@@ -113,7 +162,9 @@ def test_post_chat_stream_emits_sse_events(client: TestClient) -> None:
     assert resp.status_code == 200
     assert "event: thinking" in body
     assert "event: plan_ready" in body
-    assert "Plan Lisbon" in body
+    assert "Review flights for Lisbon" in body
+    assert "event: plan_step_started" in body
+    assert "event: plan_step_completed" in body
     assert "event: done" in body
 
 

@@ -15,9 +15,9 @@ export function useChat() {
     setMessages,
     setStatus,
     setItinerary,
+    setIncrementalPlan,
     resetPlanningState,
-    setTaskPlan,
-    appendToolProgress,
+    upsertPlanStep,
   } = useChatStore();
 
   const send = useCallback(
@@ -45,26 +45,35 @@ export function useChat() {
                 break;
               }
               case "plan_ready": {
-                setTaskPlan(event.data.task_plan);
+                setIncrementalPlan(event.data.incremental_plan);
                 setStatus("thinking", "Drafting a trip plan…");
                 break;
               }
+              case "plan_step_started": {
+                upsertPlanStep(event.data.step, event.data.session_id);
+                setStatus("thinking", `Working on ${event.data.step.task}…`);
+                break;
+              }
+              case "plan_step_updated": {
+                upsertPlanStep(event.data.step, event.data.session_id);
+                setStatus("thinking", `Updating ${event.data.step.task}…`);
+                break;
+              }
+              case "plan_step_completed": {
+                upsertPlanStep(event.data.step, event.data.session_id);
+                setStatus("thinking", `${event.data.step.task} complete`);
+                break;
+              }
               case "tool_started": {
-                appendToolProgress(event.data);
-                const toolName = event.data.tool ?? "tool";
-                setStatus("thinking", `Running ${toolName}…`);
                 break;
               }
               case "tool_finished": {
-                appendToolProgress(event.data);
-                const toolName = event.data.tool ?? "tool";
-                setStatus("thinking", `Updated from ${toolName}`);
                 break;
               }
               case "done": {
                 streamedItinerary = event.data.itinerary;
                 hasFinalItinerary = event.data.itinerary !== null;
-                setTaskPlan(event.data.task_plan ?? []);
+                setIncrementalPlan(event.data.incremental_plan);
                 setItinerary(event.data.itinerary);
                 break;
               }
@@ -78,6 +87,7 @@ export function useChat() {
         // Sync history from server — it's the source of truth.
         const history = await api.history(sessionId);
         setMessages(history.messages);
+        setIncrementalPlan(history.incremental_plan);
         setItinerary(streamedItinerary);
         setStatus(
           "idle",
@@ -99,8 +109,8 @@ export function useChat() {
       setMessages,
       setStatus,
       setItinerary,
-      setTaskPlan,
-      appendToolProgress,
+      setIncrementalPlan,
+      upsertPlanStep,
     ],
   );
 

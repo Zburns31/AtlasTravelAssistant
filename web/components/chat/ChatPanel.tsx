@@ -15,6 +15,7 @@ export function ChatPanel() {
   const sessionId = useChatStore((s) => s.sessionId);
   const setMessages = useChatStore((s) => s.setMessages);
   const setItinerary = useChatStore((s) => s.setItinerary);
+  const setIncrementalPlan = useChatStore((s) => s.setIncrementalPlan);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +30,7 @@ export function ChatPanel() {
         ]);
         if (cancelled) return;
         setMessages(history.messages);
+        setIncrementalPlan(history.incremental_plan);
         setItinerary(itinerary);
       } catch {
         /* first load — backend may not be up yet; ignore */
@@ -37,7 +39,7 @@ export function ChatPanel() {
     return () => {
       cancelled = true;
     };
-  }, [sessionId, setMessages, setItinerary]);
+  }, [sessionId, setIncrementalPlan, setMessages, setItinerary]);
 
   // Auto-scroll to bottom on new messages.
   useEffect(() => {

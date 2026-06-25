@@ -1,5 +1,38 @@
 # Atlas — Progress Log
 
+## 2026-06-25 — Simplify Draft Planning UI
+
+### Goal
+Stop the live planning surface from exposing tool-call and query-trace detail, switch it to compact domain cards, and hide that draft surface once the final itinerary is ready.
+
+### What changed
+- `src/atlas/api/schemas.py` now gives incremental plan steps compact card metadata (`kind`, `day_index`, `preview_lines`) so the UI can render domain-specific progress without relying on tool traces.
+- `src/atlas/api/handlers.py` now seeds planning cards from the enriched query, suppresses user-facing tool lifecycle streaming, and emits sequential `plan_step_started` / `plan_step_completed` events for flights, accommodation, and each itinerary day during synthesis.
+- `web/lib/types.ts`, `web/lib/api.ts`, and `web/hooks/useChat.ts` now consume the slimmer planning contract and stop reacting to verbose tool/query progress in the main UI flow.
+- `web/components/itinerary/ItineraryPanel.tsx` now renders compact build cards instead of findings/tool logs, and it removes the planning surface entirely once the final itinerary is available.
+- `tests/api/test_handlers.py` and `tests/api/test_server.py` now cover the compact event sequence rather than tool-level SSE events.
+
+### Verification
+- `uv run pytest tests/api/test_handlers.py tests/api/test_server.py`
+- `cd web && npx tsc --noEmit`
+
+## 2026-06-25 — Persist And Stream Incremental Planning State
+
+### Goal
+Turn the one-shot draft task plan into a durable session-scoped planning object that the UI can build up incrementally while Atlas researches and synthesises a trip.
+
+### What changed
+- `src/atlas/api/schemas.py` now defines typed incremental-plan models, adds `incremental_plan` to `ChatResponse`, and includes the latest persisted plan on history responses.
+- `src/atlas/api/handlers.py` now persists an in-memory incremental plan per session, converts decomposed task plans into stable step ids, attaches tool findings to steps during streaming, emits `plan_step_started`, `plan_step_updated`, `plan_step_completed`, and `day_draft_ready` events, and finalizes the plan on both streaming and non-streaming chat flows.
+- `src/atlas/api/routes/chat.py` now returns the latest persisted plan alongside chat history so reloads can restore the last planning state without a separate endpoint.
+- `tests/api/test_handlers.py` and `tests/api/test_server.py` now cover incremental-plan serialization, history hydration, and the widened SSE event sequence.
+- `web/lib/types.ts`, `web/lib/api.ts`, `web/lib/store.ts`, `web/hooks/useChat.ts`, and `web/components/chat/ChatPanel.tsx` now parse, store, and hydrate the persisted incremental plan end to end.
+- `web/components/itinerary/ItineraryPanel.tsx` now renders a living plan surface with step status, findings, tool activity, and draft day summaries instead of only showing a static plan skeleton while the agent thinks.
+
+### Verification
+- `uv run pytest tests/api/test_handlers.py tests/api/test_server.py` → 29 passed.
+- `cd web && npx tsc --noEmit` → clean.
+
 ## 2026-06-25 — Fix Frontend Invalid Date Rendering
 
 ### Goal
